@@ -14,7 +14,7 @@
 
 <br/>
 
-[![Download APK](https://img.shields.io/badge/📲_Android_APK_İndir-AlertRox.apk_(v1.2.0)-00F0FF?style=for-the-badge&logo=android&logoColor=black)](https://github.com/RoxieG11/AlertRox/releases/latest/download/AlertRox.apk)
+[![Download APK](https://img.shields.io/badge/📲_Android_APK_İndir-AlertRox.apk_(v1.3.0)-00F0FF?style=for-the-badge&logo=android&logoColor=black)](https://github.com/RoxieG11/AlertRox/releases/latest/download/AlertRox.apk)
 
 ---
 

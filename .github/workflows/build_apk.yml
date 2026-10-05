@@ -48,21 +48,24 @@ jobs:
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.2.0
-          name: AlertRox v1.2.0 (Android Release)
+          tag_name: ${{ github.ref_name }}
+          name: AlertRox ${{ github.ref_name }} (Android Release)
           draft: false
           prerelease: false
           files: AlertRox.apk
           body: |
-            ### 🚨 AlertRox v1.2.0 — Android APK Yayınlandı!
+            ### 🚨 AlertRox ${{ github.ref_name }} — Android APK Yayınlandı!
             
             Bu sürüm ile eklenen başlıca özellikler:
-            - ⏱️ **Özelleştirilebilir Kapatma Sayacı:** Varsayılan 10 saniye ve çift taraflı (PC ekranında ve mobil uygulamada) canlı sayaç.
-            - 📱 **Yenilenen Masaüstü Widget'ı:** Android çökme hatası düzeltildi, 10 dil desteği ve canlı kapatma bildirimi eklendi.
-            - 🔔 **Android 13+ Bildirimleri:** PC açıldığında telefonunuza sesli ve titreşimli açılış bildirimi.
-            - 💬 **Gelişmiş Sohbet:** PC ve telefon arasında çift yönlü senkronize sohbet temizleme ve modern karanlık tema.
-            - 📥 **Doğrudan Medya İndirme:** Fotoğrafları Galeriye, ses kayıtlarını Downloads klasörüne kaydetme.
-            - 💡 **Açık Kaynak & Ücretsiz Lisans Uyarısı:** Tamamen açık kaynaklı ve ücretsiz.
+            - 🔔 **Arka Plan Gözcü Servisi (Foreground Service):** Android'in uygulamayı uyutmasını engeller ve PC açılışlarını anında ses/titreşim ile bildirir.
+            - 🪟 **Saydam Mod (Glassmorphism):** iOS tarzı yarı saydam buzlu cam kart ve buton estetiği.
+            - 🎨 **Tema Özelleştirici & Canlı RGB Seçici:** 7 hazır renk paleti ve RGB slider'ları ile canlı renk seçimi.
+            - ⏱️ **24 Saatlik Kapatma Sayacı:** 10 saniyeden 24 saate kadar uzatılabilir sayaç ve 12 hazır çip.
+            - 🔒 **PC Kapatma İptal Kilidi:** PC başındaki kişinin kapatmayı iptal etmesini engelleme (Ayarlardan opsiyonel).
+            - 🌓 **Widget Tema Seçimi:** Widget'ı Aydınlık veya Karanlık mod olarak belirleyebilme.
+            - 👨‍💻 **Roxie GitHub Bağlantısı:** Ayarlar kısmından tek dokunuşla geliştirici profiline erişim.
+            - 💡 **Açık Kaynak & Tamamen Ücretsiz**
+            
             - 👨‍💻 **Geliştirici:** Roxie
             
             #### 📲 Nasıl Kurulur?
