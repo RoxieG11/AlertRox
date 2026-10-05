@@ -223,6 +223,10 @@ class AlertRoxClient:
         )
         return result.data
 
+    def clear_chat_messages(self) -> None:
+        """Tüm sohbet mesajlarını siler."""
+        self.client.table("messages").delete().eq("device_id", self.device_id).execute()
+
     # ─────────────────────────────────────────
     # Storage İşlemleri (alertrox-files bucket)
     # ─────────────────────────────────────────

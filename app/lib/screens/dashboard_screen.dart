@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../services/supabase_service.dart';
+import '../services/widget_service.dart';
 import '../constants/theme.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -16,10 +18,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Map<String, dynamic>> _activityLogs = [];
   bool _logsLoading = false;
 
+  // Active Shutdown Timer state
+  int? _shutdownRemainingSeconds;
+  Timer? _shutdownTimer;
+
   @override
   void initState() {
     super.initState();
     _loadLogs();
+  }
+
+  @override
+  void dispose() {
+    _shutdownTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadLogs() async {
@@ -45,16 +57,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (device == null) return;
     final targetId = (device['device_id'] ?? device['id']).toString();
 
-    if (requireConfirmation) {
-      final confirmMsg = commandType == 'shutdown'
-          ? provider.tr('dialog_shutdown_msg')
-          : provider.tr('dialog_logout_msg');
+    if (commandType == 'shutdown') {
+      await _showShutdownBottomSheet(provider, targetId);
+      return;
+    }
 
+    if (requireConfirmation) {
       final confirmed = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
           title: Text(provider.tr('dialog_confirm_title')),
-          content: Text(confirmMsg),
+          content: Text(provider.tr('dialog_logout_msg')),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
@@ -100,6 +113,292 @@ class _DashboardScreenState extends State<DashboardScreen> {
       if (mounted) {
         setState(() => _isActionLoading = false);
         _loadLogs();
+      }
+    }
+  }
+
+  Future<void> _showShutdownBottomSheet(
+      AppProvider provider, String targetId) async {
+    int selectedSeconds = 10;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            String formatDisplay(int s) {
+              if (s < 60) return '$s ${provider.tr('seconds')}';
+              final m = s ~/ 60;
+              final r = s % 60;
+              if (m < 60) {
+                return r > 0
+                    ? '$m ${provider.tr('minutes')} $r ${provider.tr('seconds')}'
+                    : '$m ${provider.tr('minutes')}';
+              }
+              final h = m ~/ 60;
+              final rm = m % 60;
+              return rm > 0
+                  ? '$h ${provider.tr('hours')} $rm ${provider.tr('minutes')}'
+                  : '$h ${provider.tr('hours')}';
+            }
+
+            final presets = [
+              {'label': '10 ${provider.tr('seconds')}', 'val': 10},
+              {'label': '30 ${provider.tr('seconds')}', 'val': 30},
+              {'label': '1 ${provider.tr('minutes')}', 'val': 60},
+              {'label': '5 ${provider.tr('minutes')}', 'val': 300},
+              {'label': '15 ${provider.tr('minutes')}', 'val': 900},
+              {'label': '30 ${provider.tr('minutes')}', 'val': 1800},
+              {'label': '1 ${provider.tr('hours')}', 'val': 3600},
+              {'label': '2 ${provider.tr('hours')}', 'val': 7200},
+            ];
+
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 20,
+                right: 20,
+                top: 20,
+                bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.statusOffline.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.power_settings_new,
+                            color: AppTheme.statusOffline, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              provider.tr('shutdown_timer_title'),
+                              style: const TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                              provider.tr('shutdown_select_time'),
+                              style: const TextStyle(
+                                  fontSize: 12, color: AppTheme.darkTextMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: presets.map((p) {
+                      final val = p['val'] as int;
+                      final isSelected = selectedSeconds == val;
+                      return ChoiceChip(
+                        label: Text(p['label'] as String),
+                        selected: isSelected,
+                        selectedColor: AppTheme.statusOffline,
+                        labelStyle: TextStyle(
+                          color: isSelected ? Colors.white : null,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
+                          fontSize: 12,
+                        ),
+                        onSelected: (selected) {
+                          if (selected) {
+                            setModalState(() => selectedSeconds = val);
+                          }
+                        },
+                      );
+                    }).toList(),
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${provider.tr('shutdown_remaining')}:',
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        formatDisplay(selectedSeconds),
+                        style: const TextStyle(
+                          color: AppTheme.statusOffline,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Slider(
+                    value: selectedSeconds.toDouble(),
+                    min: 10,
+                    max: 7200,
+                    divisions: 100,
+                    activeColor: AppTheme.statusOffline,
+                    onChanged: (val) {
+                      setModalState(() => selectedSeconds = val.round());
+                    },
+                  ),
+
+                  const SizedBox(height: 16),
+
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          child: Text(provider.tr('btn_cancel')),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.statusOffline,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          icon: const Icon(Icons.timer_outlined, size: 18),
+                          label: Text(
+                              '${provider.tr('shutdown_start_btn')} (${formatDisplay(selectedSeconds)})'),
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            _startShutdown(
+                                selectedSeconds, targetId, provider);
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _startShutdown(
+      int delaySeconds, String targetId, AppProvider provider) async {
+    setState(() => _isActionLoading = true);
+    try {
+      await SupabaseService()
+          .sendCommand(targetId, 'shutdown', {'delay': delaySeconds});
+
+      _shutdownTimer?.cancel();
+      _shutdownRemainingSeconds = delaySeconds;
+
+      _shutdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (!mounted ||
+            _shutdownRemainingSeconds == null ||
+            _shutdownRemainingSeconds! <= 0) {
+          timer.cancel();
+          setState(() {
+            _shutdownRemainingSeconds = null;
+          });
+          WidgetService.updateWidget(
+            device: provider.selectedDevice,
+            isOnline: provider.isDeviceOnline(provider.selectedDevice),
+            langCode: provider.currentLanguage,
+            isShuttingDown: false,
+          );
+          return;
+        }
+
+        setState(() {
+          _shutdownRemainingSeconds = _shutdownRemainingSeconds! - 1;
+        });
+
+        final s = _shutdownRemainingSeconds!;
+        final m = s ~/ 60;
+        final r = s % 60;
+        final formatted = m > 0
+            ? '${m.toString().padLeft(2, '0')}:${r.toString().padLeft(2, '0')}'
+            : '00:${r.toString().padLeft(2, '0')}';
+
+        WidgetService.updateWidget(
+          device: provider.selectedDevice,
+          isOnline: provider.isDeviceOnline(provider.selectedDevice),
+          langCode: provider.currentLanguage,
+          isShuttingDown: true,
+          shutdownCountdown: formatted,
+        );
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.tr('cmd_sent')),
+            backgroundColor: AppTheme.statusOnline,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${provider.tr('cmd_failed')}$e'),
+            backgroundColor: AppTheme.statusOffline,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isActionLoading = false);
+        _loadLogs();
+      }
+    }
+  }
+
+  Future<void> _cancelShutdown(String targetId, AppProvider provider) async {
+    _shutdownTimer?.cancel();
+    setState(() {
+      _shutdownRemainingSeconds = null;
+    });
+
+    try {
+      await SupabaseService().sendCommand(targetId, 'cancel_shutdown');
+      WidgetService.updateWidget(
+        device: provider.selectedDevice,
+        isOnline: provider.isDeviceOnline(provider.selectedDevice),
+        langCode: provider.currentLanguage,
+        isShuttingDown: false,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.tr('shutdown_cancelled')),
+            backgroundColor: AppTheme.statusOnline,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${provider.tr('cmd_failed')}$e'),
+            backgroundColor: AppTheme.statusOffline,
+          ),
+        );
       }
     }
   }
@@ -158,13 +457,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       provider.tr('no_devices'),
                       style: const TextStyle(fontSize: 16),
                     ),
-                    if (provider.errorMessage != null && provider.errorMessage!.isNotEmpty) ...[
+                    if (provider.errorMessage != null &&
+                        provider.errorMessage!.isNotEmpty) ...[
                       const SizedBox(height: 8),
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 24),
                         child: Text(
                           provider.errorMessage!,
-                          style: const TextStyle(color: AppTheme.statusOffline, fontSize: 12),
+                          style: const TextStyle(
+                              color: AppTheme.statusOffline, fontSize: 12),
                           textAlign: TextAlign.center,
                         ),
                       ),
@@ -181,11 +482,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
             : ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
-                  // Device Status Card
                   _buildDeviceCard(provider, device, isOnline),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // Quick Actions Grid Header
+                  if (_shutdownRemainingSeconds != null &&
+                      _shutdownRemainingSeconds! > 0) ...[
+                    _buildShutdownCountdownBanner(provider),
+                    const SizedBox(height: 16),
+                  ],
+
                   Text(
                     provider.tr('quick_actions'),
                     style: const TextStyle(
@@ -195,11 +500,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Quick Actions Grid
                   _buildActionsGrid(provider),
                   const SizedBox(height: 24),
 
-                  // Recent Activity Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -220,10 +523,89 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Logs List
                   _buildLogsList(provider),
                 ],
               ),
+      ),
+    );
+  }
+
+  Widget _buildShutdownCountdownBanner(AppProvider provider) {
+    final secs = _shutdownRemainingSeconds ?? 0;
+    final mins = secs ~/ 60;
+    final remSecs = secs % 60;
+    final formatted = mins > 0
+        ? '${mins.toString().padLeft(2, '0')}:${remSecs.toString().padLeft(2, '0')}'
+        : '00:${remSecs.toString().padLeft(2, '0')}';
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppTheme.statusOffline.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.statusOffline, width: 1.5),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppTheme.statusOffline.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.warning_amber_rounded,
+                    color: AppTheme.statusOffline, size: 26),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      provider.tr('shutdown_active_title'),
+                      style: const TextStyle(
+                        color: AppTheme.statusOffline,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        letterSpacing: 0.6,
+                      ),
+                    ),
+                    Text(
+                      '${provider.tr('shutdown_remaining')}: $formatted',
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppTheme.statusOffline,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              icon: const Icon(Icons.cancel_outlined, size: 18),
+              label: Text(provider.tr('shutdown_cancel_btn')),
+              onPressed: () {
+                final device = provider.selectedDevice;
+                if (device != null) {
+                  final targetId =
+                      (device['device_id'] ?? device['id']).toString();
+                  _cancelShutdown(targetId, provider);
+                }
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -243,27 +625,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        devName.toString(),
-                        style: const TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+                Row(
+                  children: [
+                    const Icon(Icons.desktop_windows,
+                        color: AppTheme.primaryTeal, size: 28),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          devName.toString(),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${provider.tr('device_os')}: $osName',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppTheme.darkTextMuted,
+                        Text(
+                          osName.toString(),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.darkTextMuted,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ],
                 ),
                 Container(
                   padding:
@@ -421,87 +807,154 @@ class _DashboardScreenState extends State<DashboardScreen> {
       },
     ];
 
+    final gridActions = actions.sublist(0, 6);
+    final chatAction = actions[6];
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossCount = constraints.maxWidth > 700 ? 4 : 2;
 
-        return GridView.builder(
-          physics: const NeverScrollableScrollPhysics(),
-          shrinkWrap: true,
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossCount,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.35,
-          ),
-          itemCount: actions.length,
-          itemBuilder: (ctx, index) {
-            final act = actions[index];
-            final color = act['color'] as Color;
+        return Column(
+          children: [
+            GridView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              shrinkWrap: true,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossCount,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.35,
+              ),
+              itemCount: gridActions.length,
+              itemBuilder: (ctx, index) {
+                final act = gridActions[index];
+                final color = act['color'] as Color;
 
-            return Material(
-              color: Colors.transparent,
-              child: InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: _isActionLoading
-                    ? null
-                    : () => _triggerCommand(
-                          act['id'] as String,
-                          payload: act['payload'] as Map<String, dynamic>?,
-                          requireConfirmation: act['danger'] as bool,
-                        ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isDark ? AppTheme.darkCard : Colors.white,
+                return Material(
+                  color: Colors.transparent,
+                  child: InkWell(
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: color.withValues(alpha: isDark ? 0.35 : 0.4),
-                      width: 1.5,
+                    onTap: _isActionLoading
+                        ? null
+                        : () => _triggerCommand(
+                              act['id'] as String,
+                              payload: act['payload'] as Map<String, dynamic>?,
+                              requireConfirmation: act['danger'] as bool,
+                            ),
+                    child: Card(
+                      elevation: 0,
+                      margin: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(
+                          color: isDark
+                              ? AppTheme.darkCardBorder
+                              : const Color(0xFFCBD5E1),
+                          width: 1.2,
+                        ),
+                      ),
+                      color: isDark ? const Color(0xFF161F30) : Colors.white,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 12),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 46,
+                              height: 46,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: color.withValues(alpha: 0.15),
+                              ),
+                              child: Icon(act['icon'] as IconData,
+                                  color: color, size: 24),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              act['label'] as String,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF0F172A),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: isDark
-                            ? Colors.black.withValues(alpha: 0.2)
-                            : color.withValues(alpha: 0.08),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
                   ),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: isDark ? 0.18 : 0.12),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(act['icon'] as IconData, size: 24, color: color),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        act['label'] as String,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.bold,
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            // Full Width "Masaüstü Sohbet" Card Button!
+            _buildFullWidthChatButton(provider, chatAction, isDark),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildFullWidthChatButton(
+      AppProvider provider, Map<String, dynamic> act, bool isDark) {
+    final color = act['color'] as Color;
+
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: color.withValues(alpha: 0.5),
+          width: 1.2,
+        ),
+      ),
+      color: isDark ? const Color(0xFF161F30) : Colors.white,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: _isActionLoading
+            ? null
+            : () => _triggerCommand(act['id'] as String),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color.withValues(alpha: 0.15),
+                ),
+                child: Icon(act['icon'] as IconData, color: color, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  act['label'] as String,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
                   ),
                 ),
               ),
-            );
-          },
-        );
-      },
+              Icon(
+                Icons.open_in_new,
+                size: 20,
+                color: color,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
@@ -518,46 +971,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    return ListView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      shrinkWrap: true,
-      itemCount: _activityLogs.length,
-      itemBuilder: (ctx, index) {
-        final log = _activityLogs[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            dense: true,
-            leading: const Icon(Icons.history, color: AppTheme.primaryTeal),
-            title: Text(
-              log['event_type'] ?? log['activity_type'] ?? 'Action',
-              style: const TextStyle(fontWeight: FontWeight.w600),
+    return Card(
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _activityLogs.length > 5 ? 5 : _activityLogs.length,
+        separatorBuilder: (_, _) => const Divider(height: 1),
+        itemBuilder: (ctx, index) {
+          final log = _activityLogs[index];
+          final event = log['event_type'] ?? 'log';
+          final msg = log['message'] ?? '';
+          final time = _formatTime(log['created_at']);
+
+          return ListTile(
+            leading: Icon(
+              _getLogIcon(event),
+              color: AppTheme.primaryTeal,
+              size: 20,
             ),
-            subtitle: Text(
-              log['message'] ?? log['details']?.toString() ?? '',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+            title: Text(
+              msg,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
             ),
             trailing: Text(
-              _formatTime(log['created_at']),
+              time,
               style: const TextStyle(
-                fontSize: 11,
-                color: AppTheme.darkTextMuted,
-              ),
+                  fontSize: 11, color: AppTheme.darkTextMuted),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 
+  IconData _getLogIcon(String event) {
+    switch (event) {
+      case 'boot':
+        return Icons.power;
+      case 'command_executed':
+        return Icons.check_circle_outline;
+      case 'heartbeat':
+        return Icons.favorite_border;
+      case 'chat_opened':
+        return Icons.chat_bubble_outline;
+      case 'shutdown_scheduled':
+        return Icons.timer_outlined;
+      case 'shutdown_cancelled':
+        return Icons.cancel_outlined;
+      default:
+        return Icons.info_outline;
+    }
+  }
+
   String _formatTime(String? isoString) {
-    if (isoString == null) return '--';
+    if (isoString == null) return '--:--';
     try {
       final dt = DateTime.parse(isoString).toLocal();
-      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
+      return '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
     } catch (_) {
-      return isoString;
+      return '--:--';
     }
   }
 }

@@ -1,34 +1,37 @@
 """
-AlertRox — PC Canlı Chat Penceresi (Tkinter)
+AlertRox — PC Canlı Chat Penceresi (Modern Tkinter)
 
 Telefondan mesaj geldiğinde veya sohbet başlatıldığında
-ekranın sağ altında beliren hafif ve modern sohbet penceresi.
-Kullanıcı kapatırsa telefondan tekrar açılabilir.
+ekranın sağ altında beliren hafif, modern ve neon tasarımlı sohbet penceresi.
+Telefondan veya PC'den temizleme yapıldığında her iki tarafta anlık senkronize olur.
 """
 
 import os
 import threading
 import time
 import tkinter as tk
-from tkinter import ttk
+from tkinter import messagebox
 from datetime import datetime
 
 
 class AlertRoxChatWindow:
-    """PC tarafında masaüstünde çalışan iki yönlü chat penceresi."""
+    """PC tarafında masaüstünde çalışan iki yönlü modern chat penceresi."""
 
     def __init__(self, client):
         self.client = client
         self.root = None
         self.is_open = False
-        self.message_list = []
         self._thread = None
         self._poll_running = False
+        self._seen_ids = set()
 
     def launch(self):
         """Chat penceresini başlatır (eğer açık değilse açar, açıksa öne getirir)."""
         if self.is_open and self.root:
-            self.root.after(0, self._bring_to_front)
+            try:
+                self.root.after(0, self._bring_to_front)
+            except Exception:
+                pass
             return
 
         self._thread = threading.Thread(target=self._run_gui, daemon=True)
@@ -43,103 +46,154 @@ class AlertRoxChatWindow:
 
     def _run_gui(self):
         self.root = tk.Tk()
-        self.root.title("AlertRox — Güvenli Sohbet")
-        self.root.geometry("380x520")
-        self.root.minsize(340, 440)
+        self.root.title("AlertRox — Canlı Sohbet")
+        self.root.geometry("400x560")
+        self.root.minsize(360, 480)
         self.is_open = True
+
+        # Renk Paleti (AlertRox Koyu Neon)
+        bg_dark = "#0B0F19"
+        bg_card = "#161F30"
+        bg_input = "#0F172A"
+        accent_teal = "#00F0FF"
+        accent_green = "#10B981"
+        fg_white = "#F8FAFC"
+        fg_muted = "#94A3B8"
+        border_col = "#1E293B"
+
+        self.root.configure(bg=bg_dark)
 
         # Pencereyi sağ alta konumlandır
         self.root.update_idletasks()
         sw = self.root.winfo_screenwidth()
         sh = self.root.winfo_screenheight()
-        self.root.geometry(f"380x520+{sw - 410}+{sh - 580}")
-
-        # Karanlık Tema Renkleri
-        bg_dark = "#18181b"
-        bg_card = "#27272a"
-        fg_white = "#f4f4f5"
-        accent_blue = "#3b82f6"
-        accent_green = "#22c55e"
-        gray_muted = "#71717a"
-
-        self.root.configure(bg=bg_dark)
+        self.root.geometry(f"400x560+{sw - 430}+{sh - 620}")
 
         # ── Başlık Barı ──
-        header = tk.Frame(self.root, bg=bg_card, height=54)
+        header = tk.Frame(self.root, bg=bg_card, height=54, padx=12, pady=10)
         header.pack(fill=tk.X)
 
+        title_frame = tk.Frame(header, bg=bg_card)
+        title_frame.pack(side=tk.LEFT, fill=tk.Y)
+
         title_lbl = tk.Label(
-            header,
-            text="📱 AlertRox Telefon Bağlantısı",
+            title_frame,
+            text="📱 AlertRox Sohbet",
             font=("Segoe UI", 11, "bold"),
             bg=bg_card,
             fg=fg_white,
-            padx=14,
-            pady=12,
         )
-        title_lbl.pack(side=tk.LEFT)
+        title_lbl.pack(anchor="w")
 
         status_lbl = tk.Label(
-            header,
-            text="● Canlı",
-            font=("Segoe UI", 9, "bold"),
+            title_frame,
+            text="● Çevrimiçi & Canlı Senkronize",
+            font=("Segoe UI", 8),
             bg=bg_card,
             fg=accent_green,
-            padx=14,
         )
-        status_lbl.pack(side=tk.RIGHT)
+        status_lbl.pack(anchor="w")
+
+        # Sohbeti Temizle Butonu
+        clear_btn = tk.Button(
+            header,
+            text="🗑 Temizle",
+            font=("Segoe UI", 9, "bold"),
+            bg="#27272A",
+            fg="#EF4444",
+            activebackground="#EF4444",
+            activeforeground="white",
+            relief=tk.FLAT,
+            padx=10,
+            pady=4,
+            cursor="hand2",
+            command=self._confirm_clear_chat,
+        )
+        clear_btn.pack(side=tk.RIGHT)
 
         # ── Mesaj Alanı ──
-        msg_frame = tk.Frame(self.root, bg=bg_dark, padx=10, pady=10)
-        msg_frame.pack(fill=tk.BOTH, expand=True)
+        msg_container = tk.Frame(self.root, bg=bg_dark, padx=12, pady=10)
+        msg_container.pack(fill=tk.BOTH, expand=True)
 
         self.chat_display = tk.Text(
-            msg_frame,
-            bg="#202024",
+            msg_container,
+            bg="#0E1626",
             fg=fg_white,
             font=("Segoe UI", 10),
             wrap=tk.WORD,
-            padx=12,
-            pady=10,
+            padx=14,
+            pady=12,
             relief=tk.FLAT,
             state=tk.DISABLED,
             cursor="arrow",
+            highlightthickness=1,
+            highlightbackground=border_col,
+            highlightcolor=accent_teal,
         )
         self.chat_display.pack(fill=tk.BOTH, expand=True)
 
-        # Mesaj tag stilleri
-        self.chat_display.tag_config("mobile_header", foreground=accent_blue, font=("Segoe UI", 9, "bold"))
-        self.chat_display.tag_config("pc_header", foreground=accent_green, font=("Segoe UI", 9, "bold"))
-        self.chat_display.tag_config("mobile_msg", foreground="#e4e4e7", spacing1=2, spacing3=8)
-        self.chat_display.tag_config("pc_msg", foreground="#e4e4e7", spacing1=2, spacing3=8)
-        self.chat_display.tag_config("time", foreground=gray_muted, font=("Segoe UI", 8))
+        # Tag Stilleri (Modern Görünüm)
+        self.chat_display.tag_config(
+            "mobile_sender",
+            foreground=accent_teal,
+            font=("Segoe UI", 9, "bold"),
+            spacing1=8,
+        )
+        self.chat_display.tag_config(
+            "pc_sender",
+            foreground=accent_green,
+            font=("Segoe UI", 9, "bold"),
+            spacing1=8,
+        )
+        self.chat_display.tag_config(
+            "mobile_bubble",
+            foreground="#E2E8F0",
+            spacing1=2,
+            spacing3=6,
+            lmargin1=8,
+            lmargin2=8,
+        )
+        self.chat_display.tag_config(
+            "pc_bubble",
+            foreground="#F1F5F9",
+            spacing1=2,
+            spacing3=6,
+            lmargin1=8,
+            lmargin2=8,
+        )
+        self.chat_display.tag_config("time", foreground=fg_muted, font=("Segoe UI", 8))
 
         # ── Giriş Alanı ──
-        input_frame = tk.Frame(self.root, bg=bg_card, padx=10, pady=10)
-        input_frame.pack(fill=tk.X)
+        input_container = tk.Frame(self.root, bg=bg_card, padx=12, pady=12)
+        input_container.pack(fill=tk.X)
 
         self.entry_msg = tk.Entry(
-            input_frame,
-            bg="#18181b",
+            input_container,
+            bg=bg_input,
             fg=fg_white,
-            insertbackground=fg_white,
+            insertbackground=accent_teal,
             font=("Segoe UI", 10),
             relief=tk.FLAT,
+            highlightthickness=1,
+            highlightbackground=border_col,
+            highlightcolor=accent_teal,
         )
-        self.entry_msg.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=7, padx=(0, 8))
+        self.entry_msg.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=8, padx=(0, 10))
         self.entry_msg.bind("<Return>", lambda e: self.send_message())
         self.entry_msg.focus()
 
         send_btn = tk.Button(
-            input_frame,
+            input_container,
             text="Gönder",
-            bg=accent_blue,
-            fg="white",
-            activebackground="#2563eb",
-            activeforeground="white",
+            bg=accent_teal,
+            fg="#0B0F19",
+            activebackground="#38BDF8",
+            activeforeground="#0B0F19",
             font=("Segoe UI", 10, "bold"),
             relief=tk.FLAT,
-            padx=14,
+            padx=16,
+            pady=6,
+            cursor="hand2",
             command=self.send_message,
         )
         send_btn.pack(side=tk.RIGHT)
@@ -149,13 +203,13 @@ class AlertRoxChatWindow:
 
         # Mesaj dinleme döngüsünü başlat
         self._poll_running = True
+        self._seen_ids.clear()
         threading.Thread(target=self._poll_messages, daemon=True).start()
 
         self._bring_to_front()
         self.root.mainloop()
 
     def _on_close(self):
-        """Kapatılınca tamamen yok etme, gizle veya tekrar açılabilir yap."""
         self.is_open = False
         self._poll_running = False
         if self.root:
@@ -165,6 +219,35 @@ class AlertRoxChatWindow:
                 pass
             self.root = None
 
+    def _confirm_clear_chat(self):
+        """PC'den sohbeti temizleme onayı."""
+        ans = messagebox.askyesno(
+            "Sohbeti Temizle",
+            "Tüm sohbet geçmişini silmek istediğinize emin misiniz?\nBu işlem telefondan da mesajları silecektir.",
+            parent=self.root,
+        )
+        if ans:
+            threading.Thread(target=self._clear_chat_supabase, daemon=True).start()
+
+    def _clear_chat_supabase(self):
+        try:
+            self.client.clear_chat_messages()
+            self._clear_display()
+            self._seen_ids.clear()
+        except Exception as e:
+            print(f"[AlertRox Chat] Sohbet silme hatası: {e}")
+
+    def _clear_display(self):
+        if not self.root:
+            return
+
+        def _do_clear():
+            self.chat_display.configure(state=tk.NORMAL)
+            self.chat_display.delete("1.0", tk.END)
+            self.chat_display.configure(state=tk.DISABLED)
+
+        self.root.after(0, _do_clear)
+
     def send_message(self):
         """PC'den telefona mesaj gönderir."""
         text = self.entry_msg.get().strip()
@@ -172,10 +255,6 @@ class AlertRoxChatWindow:
             return
 
         self.entry_msg.delete(0, tk.END)
-
-        # Ekrana bas
-        now = datetime.now().strftime("%H:%M")
-        self._append_message("PC (Siz)", text, now, is_mobile=False)
 
         # Supabase'e gönder
         threading.Thread(
@@ -186,7 +265,11 @@ class AlertRoxChatWindow:
 
     def _send_to_supabase(self, text: str):
         try:
-            self.client.send_chat_message(sender="pc", text=text)
+            res = self.client.send_chat_message(sender="pc", text=text)
+            if res and "id" in res:
+                self._seen_ids.add(res["id"])
+                now = datetime.now().strftime("%H:%M")
+                self._append_message("💻 PC (Siz)", text, now, is_mobile=False)
         except Exception as e:
             print(f"[AlertRox Chat] Mesaj gönderme hatası: {e}")
 
@@ -196,49 +279,55 @@ class AlertRoxChatWindow:
 
         def _insert():
             self.chat_display.configure(state=tk.NORMAL)
-            hdr_tag = "mobile_header" if is_mobile else "pc_header"
-            msg_tag = "mobile_msg" if is_mobile else "pc_msg"
+            hdr_tag = "mobile_sender" if is_mobile else "pc_sender"
+            bubble_tag = "mobile_bubble" if is_mobile else "pc_bubble"
 
             self.chat_display.insert(tk.END, f"{sender_name} ", hdr_tag)
             self.chat_display.insert(tk.END, f"({time_str})\n", "time")
-            self.chat_display.insert(tk.END, f"{text}\n\n", msg_tag)
+            self.chat_display.insert(tk.END, f"{text}\n\n", bubble_tag)
             self.chat_display.configure(state=tk.DISABLED)
             self.chat_display.see(tk.END)
 
         self.root.after(0, _insert)
 
     def _poll_messages(self):
-        """Supabase'den telefondan gelen yeni mesajları çeker."""
-        seen_ids = set()
-
-        # İlk açılışta eski mesajları çek
-        try:
-            old_msgs = self.client.get_chat_messages(limit=20)
-            for m in old_msgs:
-                seen_ids.add(m["id"])
-                time_str = m.get("created_at", "")[11:16] if m.get("created_at") else ""
-                is_mob = m.get("sender") == "mobile"
-                sender = "📱 Telefon" if is_mob else "PC (Siz)"
-                self._append_message(sender, m.get("text", ""), time_str, is_mob)
-        except Exception as e:
-            print(f"[AlertRox Chat] Geçmiş mesaj hatası: {e}")
-
+        """Supabase'den mesajları çeker ve telefondan silindiğinde PC ekranını da anında temizler."""
         while self._poll_running:
-            time.sleep(2)
-            if not self.is_open or not self.client:
-                continue
-
             try:
-                new_msgs = self.client.get_chat_messages(limit=10)
-                for m in new_msgs:
-                    mid = m["id"]
-                    if mid not in seen_ids:
-                        seen_ids.add(mid)
+                if not self.is_open or not self.client:
+                    time.sleep(1.5)
+                    continue
+
+                messages = self.client.get_chat_messages(limit=40)
+                current_ids = {m["id"] for m in messages}
+
+                # 1. Telefondan veya dışarıdan temizleme yapıldıysa (mesajlar silindiyse)
+                if self._seen_ids and not current_ids:
+                    self._clear_display()
+                    self._seen_ids.clear()
+                elif self._seen_ids and not self._seen_ids.issubset(current_ids):
+                    # Bazı mesajlar silinmişse ekranı yeniden çiz
+                    self._clear_display()
+                    self._seen_ids.clear()
+                    for m in messages:
+                        self._seen_ids.add(m["id"])
                         is_mob = m.get("sender") == "mobile"
                         time_str = m.get("created_at", "")[11:16] if m.get("created_at") else ""
-                        sender = "📱 Telefon" if is_mob else "PC"
+                        sender = "📱 Telefon" if is_mob else "💻 PC (Siz)"
                         self._append_message(sender, m.get("text", ""), time_str, is_mob)
-                        if is_mob:
-                            self._bring_to_front()
-            except Exception:
+                else:
+                    # 2. Yeni gelen mesajları ekle
+                    for m in messages:
+                        mid = m["id"]
+                        if mid not in self._seen_ids:
+                            self._seen_ids.add(mid)
+                            is_mob = m.get("sender") == "mobile"
+                            time_str = m.get("created_at", "")[11:16] if m.get("created_at") else ""
+                            sender = "📱 Telefon" if is_mob else "💻 PC (Siz)"
+                            self._append_message(sender, m.get("text", ""), time_str, is_mob)
+                            if is_mob:
+                                self._bring_to_front()
+            except Exception as e:
                 pass
+
+            time.sleep(2)

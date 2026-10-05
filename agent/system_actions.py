@@ -44,13 +44,28 @@ def shutdown(delay_seconds: int = 60) -> tuple[bool, str]:
         return False, f"Kapatma hatası: {e}"
 
 
+def shutdown_now() -> tuple[bool, str]:
+    """Bilgisayarı derhal kapatır."""
+    try:
+        if SYSTEM == "Linux":
+            try:
+                subprocess.run(["systemctl", "poweroff"], check=True)
+            except Exception:
+                subprocess.run(["shutdown", "-h", "now"], check=True)
+        elif SYSTEM == "Windows":
+            subprocess.run(["shutdown", "/s", "/t", "0"], check=True)
+        return True, "Bilgisayar kapatılıyor"
+    except Exception as e:
+        return False, f"Kapatma hatası: {e}"
+
+
 def cancel_shutdown() -> tuple[bool, str]:
     """Zamanlanmış kapatmayı iptal eder."""
     try:
         if SYSTEM == "Linux":
-            subprocess.run(["shutdown", "-c"], check=True)
+            subprocess.run(["shutdown", "-c"], check=False)
         elif SYSTEM == "Windows":
-            subprocess.run(["shutdown", "/a"], check=True)
+            subprocess.run(["shutdown", "/a"], check=False)
 
         return True, "Kapatma iptal edildi"
     except Exception as e:
@@ -282,6 +297,11 @@ COMMAND_MAP = {
         "func": shutdown,
         "has_file": False,
         "description": "Bilgisayarı kapat",
+    },
+    "cancel_shutdown": {
+        "func": cancel_shutdown,
+        "has_file": False,
+        "description": "Kapatmayı iptal et",
     },
     "lock": {
         "func": lock_screen,

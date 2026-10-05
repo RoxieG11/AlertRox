@@ -21,10 +21,12 @@ from datetime import datetime
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agent.supabase_client import AlertRoxClient
-from agent.system_actions import COMMAND_MAP
+from agent.system_actions import COMMAND_MAP, shutdown_now, cancel_shutdown
 from agent.chat_window import AlertRoxChatWindow
+from agent.shutdown_window import ShutdownCountdownWindow
 
 chat_window_instance = None
+shutdown_window_instance = None
 
 
 # ─────────────────────────────────────────
@@ -87,6 +89,48 @@ def execute_command(client: AlertRoxClient, command: dict):
         client.update_command_status(cmd_id, "completed")
         client.log_event("chat_opened", "PC'de sohbet penceresi açıldı")
         print("[AlertRox] 💬 PC Sohbet penceresi açıldı!")
+        return
+
+    # Kapatma komutu (Geri sayım pencereli)
+    if cmd_type == "shutdown":
+        global shutdown_window_instance
+        try:
+            delay = int(payload.get("delay", 10))
+        except (ValueError, TypeError):
+            delay = 10
+        delay = max(5, min(7200, delay))
+
+        def _on_timeout():
+            print("[AlertRox] ⚠️ Kapanma sayacı tamamlandı! Bilgisayar kapatılıyor...")
+            shutdown_now()
+
+        def _on_cancel():
+            print("[AlertRox] ℹ️ Kapanma PC başındaki kullanıcı tarafından iptal edildi.")
+            client.log_event("shutdown_cancelled", "Kullanıcı PC üzerinden kapatmayı iptal etti")
+
+        if shutdown_window_instance and shutdown_window_instance.is_active:
+            shutdown_window_instance.cancel()
+
+        shutdown_window_instance = ShutdownCountdownWindow(
+            delay_seconds=delay,
+            on_cancel=_on_cancel,
+            on_timeout=_on_timeout,
+        )
+        shutdown_window_instance.show()
+
+        client.update_command_status(cmd_id, "completed")
+        client.log_event("shutdown_scheduled", f"Bilgisayar {delay} saniye sonra kapanacak")
+        print(f"[AlertRox] ⏳ {delay} saniyelik kapanma sayacı başlatıldı!")
+        return
+
+    # Kapatmayı iptal etme komutu
+    if cmd_type == "cancel_shutdown":
+        if shutdown_window_instance and shutdown_window_instance.is_active:
+            shutdown_window_instance.cancel()
+        cancel_shutdown()
+        client.update_command_status(cmd_id, "completed")
+        client.log_event("shutdown_cancelled", "Telefondan kapatma iptal edildi")
+        print("[AlertRox] 🛑 Kapatma emri iptal edildi!")
         return
 
     # Komut haritasında var mı kontrol et
