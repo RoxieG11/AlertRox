@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:permission_handler/permission_handler.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -17,13 +16,7 @@ class NotificationService {
     if (_initialized) return;
 
     if (!kIsWeb && Platform.isAndroid) {
-      // 1. Android 13+ Çalışma zamanı bildirim izni iste
-      final status = await Permission.notification.status;
-      if (!status.isGranted) {
-        await Permission.notification.request();
-      }
-
-      // 2. Android Yerel Bildirim Kanalı Yapılandırması
+      // 1. Android Yerel Bildirim Kanalı Yapılandırması
       const AndroidInitializationSettings androidSettings =
           AndroidInitializationSettings('@mipmap/ic_launcher');
 
@@ -38,6 +31,12 @@ class NotificationService {
           debugPrint('Notification clicked: ${response.payload}');
         },
       );
+
+      // 2. Android 13+ (API 33+) Çalışma zamanı bildirim izni iste
+      final androidImplementation =
+          _notificationsPlugin.resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>();
+      await androidImplementation?.requestNotificationsPermission();
 
       _initialized = true;
     }
