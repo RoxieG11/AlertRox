@@ -41,7 +41,8 @@
             android:textStyle="bold" />
     </LinearLayout>
 
-    <View
+    <!-- RemoteViews supported divider (FrameLayout) -->
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="1dp"
         android:layout_marginTop="10dp"
@@ -57,7 +58,8 @@
         android:textColor="#F3F4F6"
         android:textSize="16sp"
         android:textStyle="bold"
-        android:singleLine="true" />
+        android:maxLines="1"
+        android:ellipsize="end" />
 
     <TextView
         android:id="@+id/widget_last_seen"

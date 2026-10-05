@@ -114,6 +114,15 @@ class SupabaseService {
     });
   }
 
+  Future<void> clearMessages(String deviceId) async {
+    try {
+      await client.from('messages').delete().eq('device_id', deviceId);
+    } catch (e) {
+      debugPrint('Error clearing messages: $e');
+      rethrow;
+    }
+  }
+
   // Activity Log API
   Future<List<Map<String, dynamic>>> getActivityLogs(String deviceId,
       {int limit = 30}) async {

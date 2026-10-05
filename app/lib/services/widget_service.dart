@@ -29,6 +29,7 @@ class WidgetService {
       await HomeWidget.updateWidget(
         name: 'AlertRoxWidgetProvider',
         androidName: 'AlertRoxWidgetProvider',
+        qualifiedAndroidName: 'com.roxie.alertrox.app.AlertRoxWidgetProvider',
       );
     } catch (e) {
       debugPrint('Home widget update error: $e');

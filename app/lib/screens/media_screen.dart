@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_provider.dart';
 import '../services/supabase_service.dart';
+import '../services/media_saver_service.dart';
 import '../constants/theme.dart';
 
 class MediaScreen extends StatefulWidget {
@@ -16,6 +17,7 @@ class _MediaScreenState extends State<MediaScreen> {
   List<Map<String, dynamic>> _files = [];
   bool _isLoading = true;
   bool _isClearing = false;
+  final Set<dynamic> _downloadingIds = {};
 
   @override
   void initState() {
@@ -98,6 +100,49 @@ class _MediaScreenState extends State<MediaScreen> {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  Future<void> _downloadMedia(
+      Map<String, dynamic> item, AppProvider provider) async {
+    final id = item['id'];
+    final url = item['url'] as String? ?? '';
+    final isImage = item['is_image'] == true;
+    final type = item['type'] as String? ?? 'media';
+    if (url.isEmpty) return;
+
+    setState(() => _downloadingIds.add(id));
+    try {
+      final savedPath = await MediaSaverService.downloadAndSaveMedia(
+        url: url,
+        isImage: isImage,
+        baseName: type,
+      );
+      if (mounted) {
+        final successMsg = isImage
+            ? provider.tr('media_saved_gallery')
+            : provider.tr('media_saved_downloads');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$successMsg\n$savedPath'),
+            backgroundColor: AppTheme.statusOnline,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${provider.tr('media_save_failed')}$e'),
+            backgroundColor: AppTheme.statusOffline,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _downloadingIds.remove(id));
+      }
     }
   }
 
@@ -209,6 +254,8 @@ class _MediaScreenState extends State<MediaScreen> {
                       Color badgeColor = AppTheme.primaryTeal;
                       if (type == 'webcam') badgeColor = const Color(0xFF8B5CF6);
                       if (type == 'mic_record') badgeColor = AppTheme.accentCyan;
+
+                      final isDownloading = _downloadingIds.contains(item['id']);
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 14),
@@ -327,17 +374,52 @@ class _MediaScreenState extends State<MediaScreen> {
                                     ),
                                   ),
                                   if (url.isNotEmpty)
-                                    ElevatedButton.icon(
-                                      onPressed: () => _openUrl(url),
-                                      icon: const Icon(Icons.open_in_browser,
-                                          size: 16),
-                                      label: Text(provider.tr('media_open')),
-                                      style: ElevatedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 14, vertical: 10),
-                                        backgroundColor: badgeColor,
-                                        foregroundColor: Colors.white,
-                                      ),
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (isImage)
+                                          IconButton(
+                                            tooltip: provider.tr('media_open'),
+                                            icon: const Icon(Icons.fullscreen,
+                                                size: 22),
+                                            onPressed: () =>
+                                                _showImageDialog(name, url),
+                                          ),
+                                        ElevatedButton.icon(
+                                          onPressed: isDownloading
+                                              ? null
+                                              : () => _downloadMedia(
+                                                  item, provider),
+                                          icon: isDownloading
+                                              ? const SizedBox(
+                                                  width: 14,
+                                                  height: 14,
+                                                  child:
+                                                      CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: Colors.white,
+                                                  ),
+                                                )
+                                              : const Icon(Icons.download,
+                                                  size: 16),
+                                          label: Text(isDownloading
+                                              ? provider.tr('media_downloading')
+                                              : provider.tr('media_download')),
+                                          style: ElevatedButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                                horizontal: 12, vertical: 8),
+                                            backgroundColor: badgeColor,
+                                            foregroundColor: Colors.white,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        IconButton(
+                                          tooltip: 'Browser',
+                                          icon: const Icon(Icons.open_in_browser,
+                                              size: 20),
+                                          onPressed: () => _openUrl(url),
+                                        ),
+                                      ],
                                     ),
                                 ],
                               ),

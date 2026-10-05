@@ -15,6 +15,57 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _msgController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isSending = false;
+  bool _isClearing = false;
+
+  Future<void> _clearChat(String targetId, AppProvider provider) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(provider.tr('dialog_clear_chat_title')),
+        content: Text(provider.tr('dialog_clear_chat_msg')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(provider.tr('btn_cancel')),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.statusOffline,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(provider.tr('btn_confirm')),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isClearing = true);
+    try {
+      await SupabaseService().clearMessages(targetId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.tr('chat_cleared')),
+            backgroundColor: AppTheme.statusOnline,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${provider.tr('cmd_failed')}$e'),
+            backgroundColor: AppTheme.statusOffline,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isClearing = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -105,6 +156,19 @@ class _ChatScreenState extends State<ChatScreen> {
                 );
               }
             },
+          ),
+          IconButton(
+            tooltip: provider.tr('chat_clear'),
+            icon: _isClearing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.delete_sweep_outlined,
+                    color: AppTheme.statusOffline),
+            onPressed:
+                _isClearing ? null : () => _clearChat(targetId, provider),
           ),
         ],
       ),
