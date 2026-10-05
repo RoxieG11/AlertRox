@@ -12,6 +12,10 @@ AlertRox, evdeki veya ofisteki bilgisayarınızı cep telefonunuzdan tam kontrol
 
 ---
 
+> [!NOTE]
+> 💡 **Açık Kaynak & Tamamen Ücretsiz**
+> Bu uygulama açık kaynaklı ve tamamen ücretsiz şekilde geliştirilmiştir. Hiçbir abonelik, reklam veya ücretli özellik içermez.
+
 ## 🌟 Türkçe
 
 - 🛡️ **PC Arka Plan Gözcüsü:** Bilgisayar açıldığı an (oturum açılmasa bile) arka planda otomatik başlar.

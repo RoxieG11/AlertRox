@@ -22,6 +22,11 @@
 
 </div>
 
+> [!NOTE]
+> 💡 **Açık Kaynak & Tamamen Ücretsiz / Open Source & Free**
+> Bu uygulama açık kaynaklı ve tamamen ücretsiz şekilde geliştirilmiştir. Hiçbir abonelik, reklam veya gizli ücret içermez.
+> *This application is developed as an open-source project and is completely free of charge. No subscriptions, ads, or hidden fees.*
+
 ## 📌 What is AlertRox? / AlertRox Nedir?
 
 **AlertRox**, bilgisayarınızın güvenliğini dünyanın neresinde olursanız olun akıllı telefonunuzdan takip etmenizi sağlayan modern, açık kaynaklı bir uzaktan yönetim sistemidir.

@@ -94,6 +94,8 @@ class AppTranslations {
       'media_saved_downloads': 'Downloads klasörüne indirildi (Download/AlertRox)!',
       'media_save_failed': 'İndirme başarısız: ',
       'developer_credit': 'Geliştirici: Roxie',
+      'open_source_title': 'Açık Kaynak ve Ücretsiz',
+      'open_source_notice': 'Bu uygulama açık kaynaklı ve tamamen ücretsiz şekilde geliştirilmiştir.',
     },
     'en': {
       'app_title': 'AlertRox',
@@ -170,6 +172,8 @@ class AppTranslations {
       'media_saved_downloads': 'Saved to Downloads (Download/AlertRox)!',
       'media_save_failed': 'Failed to save: ',
       'developer_credit': 'Developer: Roxie',
+      'open_source_title': 'Open Source & Free',
+      'open_source_notice': 'This app is open-source and developed completely free of charge.',
     },
     'de': {
       'app_title': 'AlertRox',
@@ -246,6 +250,8 @@ class AppTranslations {
       'media_saved_downloads': 'In Downloads gespeichert (Download/AlertRox)!',
       'media_save_failed': 'Fehler beim Speichern: ',
       'developer_credit': 'Entwickler: Roxie',
+      'open_source_title': 'Open Source & Kostenlos',
+      'open_source_notice': 'Diese Anwendung ist Open-Source und wurde völlig kostenlos entwickelt.',
     },
     'ru': {
       'app_title': 'AlertRox',
@@ -322,6 +328,8 @@ class AppTranslations {
       'media_saved_downloads': 'Сохранено в Downloads (Download/AlertRox)!',
       'media_save_failed': 'Ошибка сохранения: ',
       'developer_credit': 'Разработчик: Roxie',
+      'open_source_title': 'Открытый исходный код и бесплатно',
+      'open_source_notice': 'Это приложение с открытым исходным кодом и разработано совершенно бесплатно.',
     },
     'es': {
       'app_title': 'AlertRox',
@@ -398,6 +406,8 @@ class AppTranslations {
       'media_saved_downloads': '¡Guardado en Descargas (Download/AlertRox)!',
       'media_save_failed': 'Error al guardar: ',
       'developer_credit': 'Desarrollador: Roxie',
+      'open_source_title': 'Código Abierto y Gratuito',
+      'open_source_notice': 'Esta aplicación es de código abierto y ha sido desarrollada de forma totalmente gratuita.',
     },
     'ar': {
       'app_title': 'AlertRox',
@@ -474,6 +484,8 @@ class AppTranslations {
       'media_saved_downloads': 'تم الحفظ في التنزيلات (Download/AlertRox)!',
       'media_save_failed': 'فشل الحفظ: ',
       'developer_credit': 'المطور: Roxie',
+      'open_source_title': 'مفتوح المصدر ومجاني',
+      'open_source_notice': 'هذا التطبيق مفتوح المصدر وتم تطويره مجانًا بالكامل.',
     },
     'fr': {
       'app_title': 'AlertRox',
@@ -550,6 +562,8 @@ class AppTranslations {
       'media_saved_downloads': 'Enregistré dans Téléchargements (Download/AlertRox) !',
       'media_save_failed': 'Échec de l\'enregistrement : ',
       'developer_credit': 'Développeur : Roxie',
+      'open_source_title': 'Open Source & Gratuit',
+      'open_source_notice': 'Cette application est open-source et développée entièrement gratuitement.',
     },
     'pt': {
       'app_title': 'AlertRox',
@@ -626,6 +640,8 @@ class AppTranslations {
       'media_saved_downloads': 'Salvo em Downloads (Download/AlertRox)!',
       'media_save_failed': 'Falha ao salvar: ',
       'developer_credit': 'Desenvolvedor: Roxie',
+      'open_source_title': 'Código Aberto e Gratuito',
+      'open_source_notice': 'Este aplicativo é de código aberto e foi desenvolvido totalmente gratuito.',
     },
     'zh': {
       'app_title': 'AlertRox',
@@ -702,6 +718,8 @@ class AppTranslations {
       'media_saved_downloads': '已保存至下载目录 (Download/AlertRox)！',
       'media_save_failed': '保存失败：', 
       'developer_credit': '开发者: Roxie',
+      'open_source_title': '开源与免费',
+      'open_source_notice': '此应用程序为开源软件，完全免费开发。',
     },
     'ja': {
       'app_title': 'AlertRox',
@@ -778,6 +796,8 @@ class AppTranslations {
       'media_saved_downloads': 'ダウンロードフォルダに保存されました (Download/AlertRox)！',
       'media_save_failed': '保存に失敗しました: ',
       'developer_credit': '開発者: Roxie',
+      'open_source_title': 'オープンソース＆完全無料',
+      'open_source_notice': 'このアプリはオープンソースであり、完全に無料で開発されています。',
     },
   };
 }

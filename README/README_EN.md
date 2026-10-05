@@ -12,6 +12,10 @@ AlertRox is an open-source security system that allows you to fully monitor and 
 
 ---
 
+> [!NOTE]
+> 💡 **Open Source & Completely Free**
+> This application is open-source and developed completely free of charge. It contains no ads, subscriptions, or paywalls.
+
 ## 🌟 English
 
 - 🛡️ **PC Background Watchdog:** Starts automatically on system boot even before user login.
