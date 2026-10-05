@@ -5,6 +5,7 @@ import '../providers/app_provider.dart';
 import '../services/supabase_service.dart';
 import '../services/widget_service.dart';
 import '../constants/theme.dart';
+import '../widgets/glass_card.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -623,7 +624,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final osName = device['os_info'] ?? device['os_type'] ?? 'Linux';
     final heartbeat = device['last_heartbeat'] ?? device['last_seen'];
 
-    return Card(
+    return GlassCard(
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -849,7 +850,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               payload: act['payload'] as Map<String, dynamic>?,
                               requireConfirmation: act['danger'] as bool,
                             ),
-                    child: Card(
+                    child: GlassCard(
                       elevation: 0,
                       margin: EdgeInsets.zero,
                       shape: RoundedRectangleBorder(
@@ -913,7 +914,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       AppProvider provider, Map<String, dynamic> act, bool isDark) {
     final color = act['color'] as Color;
 
-    return Card(
+    return GlassCard(
       elevation: 0,
       margin: EdgeInsets.zero,
       shape: RoundedRectangleBorder(
@@ -978,7 +979,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
-    return Card(
+    return GlassCard(
       child: ListView.separated(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),

@@ -43,6 +43,11 @@ class AlertRoxForegroundService {
   static Future<bool> start() async {
     if (kIsWeb || !Platform.isAndroid) return false;
     try {
+      final perm = await FlutterForegroundTask.checkNotificationPermission();
+      if (perm != NotificationPermission.granted) {
+        await FlutterForegroundTask.requestNotificationPermission();
+      }
+
       if (await FlutterForegroundTask.isRunningService) return true;
 
       final result = await FlutterForegroundTask.startService(
@@ -51,7 +56,11 @@ class AlertRoxForegroundService {
         notificationText: 'PC açılışı ve bağlantı durumu izleniyor',
         callback: startCallback,
       );
-      return result is ServiceRequestSuccess;
+      if (result is! ServiceRequestSuccess) {
+        debugPrint('Foreground service start failed: $result');
+        return false;
+      }
+      return true;
     } catch (e) {
       debugPrint('Foreground service start error: $e');
       return false;

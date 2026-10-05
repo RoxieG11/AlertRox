@@ -32,7 +32,9 @@ class AppProvider extends ChangeNotifier {
   String? _errorMessage;
 
   final Map<String, bool> _previousOnlineState = {};
+  final Set<String> _notifiedBootDeviceIds = {};
   StreamSubscription? _deviceSubscription;
+  Timer? _periodicEvaluationTimer;
 
   String get currentLanguage => _currentLanguage;
   ThemeMode get themeMode => _themeMode;
@@ -54,6 +56,7 @@ class AppProvider extends ChangeNotifier {
   @override
   void dispose() {
     _deviceSubscription?.cancel();
+    _periodicEvaluationTimer?.cancel();
     super.dispose();
   }
 
@@ -98,6 +101,13 @@ class AppProvider extends ChangeNotifier {
 
       await loadDevices();
       _listenToDeviceStream();
+
+      // Periodic evaluation every 10 seconds to recalculate online/offline states
+      _periodicEvaluationTimer?.cancel();
+      _periodicEvaluationTimer = Timer.periodic(
+        const Duration(seconds: 10),
+        (_) => _evaluateOnlineStates(),
+      );
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -110,6 +120,7 @@ class AppProvider extends ChangeNotifier {
     _deviceSubscription?.cancel();
     _deviceSubscription = SupabaseService().streamDevices().listen((list) {
       if (list.isNotEmpty) {
+        debugPrint('[AppProvider] First device row: ${list.first}');
         _devices = list;
         if (_selectedDevice != null) {
           final found = _devices.firstWhere(
@@ -121,42 +132,58 @@ class AppProvider extends ChangeNotifier {
           _selectedDevice = _devices.first;
         }
 
-        // Smart PC boot and online detection
-        for (final dev in _devices) {
-          final id = (dev['device_id'] ?? dev['id']).toString();
-          final isOnlineNow = isDeviceOnline(dev);
-          final wasOnline = _previousOnlineState[id];
-
-          // Check if device turned on recently (<90 seconds)
-          bool isRecentBoot = false;
-          final lastSeenStr = dev['last_seen'] as String?;
-          if (lastSeenStr != null) {
-            final dt = DateTime.tryParse(lastSeenStr);
-            if (dt != null) {
-              final diff = DateTime.now().toUtc().difference(dt.toUtc()).inSeconds.abs();
-              if (diff < 90) {
-                isRecentBoot = true;
-              }
-            }
-          }
-
-          if ((wasOnline == false && isOnlineNow) ||
-              (wasOnline == null && isOnlineNow && isRecentBoot)) {
-            final name = dev['name'] ?? dev['device_name'] ?? 'PC';
-            NotificationService().showDeviceOnlineNotification(name.toString());
-          }
-          _previousOnlineState[id] = isOnlineNow;
-        }
-
-        notifyListeners();
-        WidgetService.updateWidget(
-          device: _selectedDevice,
-          isOnline: isDeviceOnline(_selectedDevice),
-          langCode: _currentLanguage,
-          widgetTheme: _widgetTheme,
-        );
+        _evaluateOnlineStates();
       }
     });
+  }
+
+  void _evaluateOnlineStates() {
+    if (_devices.isEmpty) return;
+
+    for (final dev in _devices) {
+      final id = (dev['device_id'] ?? dev['id']).toString();
+      final isOnlineNow = isDeviceOnline(dev);
+      final wasOnline = _previousOnlineState[id];
+
+      // Check if device booted recently (last_boot within 90 seconds)
+      bool isRecentBoot = false;
+      final lastBootStr = dev['last_boot'] as String?;
+      if (lastBootStr != null) {
+        final dt = DateTime.tryParse(lastBootStr);
+        if (dt != null) {
+          final diff = DateTime.now().toUtc().difference(dt.toUtc()).inSeconds.abs();
+          if (diff <= 90) {
+            isRecentBoot = true;
+          }
+        }
+      }
+
+      // Conditions:
+      // (a) was offline, now online
+      // (b) initial data arrived (wasOnline == null), device online AND last_boot within 90 seconds
+      final shouldNotify = (wasOnline == false && isOnlineNow) ||
+          (wasOnline == null && isOnlineNow && isRecentBoot);
+
+      if (shouldNotify && !_notifiedBootDeviceIds.contains(id)) {
+        final name = dev['name'] ?? dev['device_name'] ?? 'PC';
+        NotificationService().showDeviceOnlineNotification(name.toString());
+        _notifiedBootDeviceIds.add(id);
+      }
+
+      if (!isOnlineNow) {
+        _notifiedBootDeviceIds.remove(id);
+      }
+
+      _previousOnlineState[id] = isOnlineNow;
+    }
+
+    notifyListeners();
+    WidgetService.updateWidget(
+      device: _selectedDevice,
+      isOnline: isDeviceOnline(_selectedDevice),
+      langCode: _currentLanguage,
+      widgetTheme: _widgetTheme,
+    );
   }
 
   Future<void> setLanguage(String langCode) async {
@@ -259,18 +286,7 @@ class AppProvider extends ChangeNotifier {
           _selectedDevice = _devices.first;
         }
 
-        // Initialize state map
-        for (final dev in _devices) {
-          final id = (dev['device_id'] ?? dev['id']).toString();
-          _previousOnlineState[id] = isDeviceOnline(dev);
-        }
-
-        WidgetService.updateWidget(
-          device: _selectedDevice,
-          isOnline: isDeviceOnline(_selectedDevice),
-          langCode: _currentLanguage,
-          widgetTheme: _widgetTheme,
-        );
+        _evaluateOnlineStates();
       }
     } catch (e) {
       _errorMessage = e.toString();
@@ -281,16 +297,18 @@ class AppProvider extends ChangeNotifier {
 
   bool isDeviceOnline(Map<String, dynamic>? device) {
     if (device == null) return false;
-    final isOnlineFlag = device['is_online'] == true;
+    final status = device['status']?.toString();
+    if (status == 'offline') return false;
+
     final lastHeartbeat = device['last_heartbeat'] as String?;
-    if (lastHeartbeat == null) return isOnlineFlag;
+    if (lastHeartbeat == null) return false;
 
     try {
       final lastTime = DateTime.parse(lastHeartbeat).toUtc();
       final now = DateTime.now().toUtc();
-      return isOnlineFlag && now.difference(lastTime).inSeconds < 45;
+      return now.difference(lastTime).inSeconds.abs() <= 45;
     } catch (_) {
-      return isOnlineFlag;
+      return false;
     }
   }
 }

@@ -6,6 +6,7 @@ import '../constants/translations.dart';
 import '../services/supabase_service.dart';
 import '../services/notification_service.dart';
 import '../constants/theme.dart';
+import '../widgets/glass_card.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -237,7 +238,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: [
           // ── 1. Görünüm & Tema Bölümü ──
           _buildSectionHeader(provider.tr('settings_appearance_theme')),
-          Card(
+          GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -391,7 +392,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // ── 2. Bildirim & Gözcü Servisi ──
           _buildSectionHeader(provider.tr('settings_foreground')),
-          Card(
+          GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Column(
@@ -441,7 +442,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // ── 3. Güvenlik & Kapatma Ayarları ──
           _buildSectionHeader(provider.tr('settings_security_shutdown')),
-          Card(
+          GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: SwitchListTile(
@@ -459,7 +460,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // ── 4. Dil Seçimi Bölümü ──
           _buildSectionHeader(provider.tr('settings_language')),
-          Card(
+          GlassCard(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Column(
@@ -493,7 +494,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           // ── 5. Supabase Yapılandırması ──
           _buildSectionHeader(provider.tr('settings_supabase')),
-          Card(
+          GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
@@ -547,7 +548,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
 
           // ── 6. Açık Kaynak ve Ücretsiz Bildirim Kartı ──
-          Card(
+          GlassCard(
             color: provider.accentColor.withValues(alpha: 0.08),
             elevation: 0,
             shape: RoundedRectangleBorder(

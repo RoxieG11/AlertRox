@@ -5,6 +5,7 @@ import '../providers/app_provider.dart';
 import '../services/supabase_service.dart';
 import '../services/media_saver_service.dart';
 import '../constants/theme.dart';
+import '../widgets/glass_card.dart';
 
 class MediaScreen extends StatefulWidget {
   const MediaScreen({super.key});
@@ -257,7 +258,7 @@ class _MediaScreenState extends State<MediaScreen> {
 
                       final isDownloading = _downloadingIds.contains(item['id']);
 
-                      return Card(
+                      return GlassCard(
                         margin: const EdgeInsets.only(bottom: 14),
                         clipBehavior: Clip.antiAlias,
                         child: Column(

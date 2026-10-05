@@ -114,7 +114,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
-      scaffoldBackgroundColor: bg,
+      scaffoldBackgroundColor: isGlassmorphic ? Colors.transparent : bg,
       colorScheme: ColorScheme(
         brightness: brightness,
         primary: primary,
