@@ -75,6 +75,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> loadDevices() async {
+    _errorMessage = null;
     try {
       final list = await SupabaseService().getDevices();
       _devices = list;

@@ -158,6 +158,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       provider.tr('no_devices'),
                       style: const TextStyle(fontSize: 16),
                     ),
+                    if (provider.errorMessage != null && provider.errorMessage!.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: Text(
+                          provider.errorMessage!,
+                          style: const TextStyle(color: AppTheme.statusOffline, fontSize: 12),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     ElevatedButton.icon(
                       onPressed: () => provider.loadDevices(),
