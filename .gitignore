@@ -1,0 +1,37 @@
+# Environment & Secrets (ASLA GitHub'a yüklenmez!)
+.env
+*.env
+.env.local
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+
+# Buildozer & Android Build
+.buildozer/
+bin/
+*.apk
+*.aab
+
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Kivy
+.kivy/
+
+# Flutter
+app/.dart_tool/
+app/build/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/.packages

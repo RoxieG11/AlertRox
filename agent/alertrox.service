@@ -1,0 +1,16 @@
+[Unit]
+Description=AlertRox PC Agent — Bilgisayar açılış bildirimi ve uzaktan kontrol servisi
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=%i
+WorkingDirectory=/home/%i/AlertRox
+ExecStart=/usr/bin/python3 -m agent.main
+Restart=on-failure
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,23 @@
+# AlertRox Bağımlılıkları
+
+# Supabase & HTTP
+supabase>=2.0.0
+python-dotenv>=1.0.0
+
+# Sistem İzleme
+psutil>=5.9.0
+
+# Ekran Görüntüsü (cross-platform, pure Python)
+mss>=9.0.0
+Pillow>=10.0.0
+
+# WebCam
+opencv-python>=4.8.0
+
+# Mikrofon Kayıt
+sounddevice>=0.4.6
+scipy>=1.11.0
+
+# Mobil Arayüz (PC'de de çalışır)
+kivy>=2.3.0
+kivymd>=2.0.0
