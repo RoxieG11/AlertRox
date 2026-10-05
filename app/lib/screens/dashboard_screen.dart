@@ -155,6 +155,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
               {'label': '30 ${provider.tr('minutes')}', 'val': 1800},
               {'label': '1 ${provider.tr('hours')}', 'val': 3600},
               {'label': '2 ${provider.tr('hours')}', 'val': 7200},
+              {'label': '4 ${provider.tr('hours')}', 'val': 14400},
+              {'label': '8 ${provider.tr('hours')}', 'val': 28800},
+              {'label': '12 ${provider.tr('hours')}', 'val': 43200},
+              {'label': '24 ${provider.tr('hours')}', 'val': 86400},
             ];
 
             return Padding(
@@ -248,8 +252,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Slider(
                     value: selectedSeconds.toDouble(),
                     min: 10,
-                    max: 7200,
-                    divisions: 100,
+                    max: 86400,
+                    divisions: 144,
                     activeColor: AppTheme.statusOffline,
                     onChanged: (val) {
                       setModalState(() => selectedSeconds = val.round());
@@ -300,8 +304,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
       int delaySeconds, String targetId, AppProvider provider) async {
     setState(() => _isActionLoading = true);
     try {
-      await SupabaseService()
-          .sendCommand(targetId, 'shutdown', {'delay': delaySeconds});
+      await SupabaseService().sendCommand(targetId, 'shutdown', {
+        'delay': delaySeconds,
+        'allow_cancel': provider.allowPcCancel,
+      });
 
       _shutdownTimer?.cancel();
       _shutdownRemainingSeconds = delaySeconds;
@@ -532,11 +538,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildShutdownCountdownBanner(AppProvider provider) {
     final secs = _shutdownRemainingSeconds ?? 0;
-    final mins = secs ~/ 60;
+    final hrs = secs ~/ 3600;
+    final mins = (secs % 3600) ~/ 60;
     final remSecs = secs % 60;
-    final formatted = mins > 0
-        ? '${mins.toString().padLeft(2, '0')}:${remSecs.toString().padLeft(2, '0')}'
-        : '00:${remSecs.toString().padLeft(2, '0')}';
+    final formatted = hrs > 0
+        ? '${hrs.toString().padLeft(2, '0')}:${mins.toString().padLeft(2, '0')}:${remSecs.toString().padLeft(2, '0')}'
+        : '${mins.toString().padLeft(2, '0')}:${remSecs.toString().padLeft(2, '0')}';
 
     return Container(
       padding: const EdgeInsets.all(16),

@@ -10,6 +10,7 @@ class WidgetService {
     String langCode = 'tr',
     bool isShuttingDown = false,
     String? shutdownCountdown,
+    String widgetTheme = 'dark',
   }) async {
     if (kIsWeb || !Platform.isAndroid) return;
 
@@ -37,6 +38,7 @@ class WidgetService {
       await HomeWidget.saveWidgetData<bool>('is_shutting_down', isShuttingDown);
       await HomeWidget.saveWidgetData<String>(
           'shutdown_countdown', shutdownCountdown ?? '');
+      await HomeWidget.saveWidgetData<String>('widget_theme', widgetTheme);
 
       await HomeWidget.updateWidget(
         name: 'AlertRoxWidgetProvider',

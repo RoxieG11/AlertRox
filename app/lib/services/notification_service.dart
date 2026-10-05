@@ -32,14 +32,66 @@ class NotificationService {
         },
       );
 
-      // 2. Android 13+ (API 33+) Çalışma zamanı bildirim izni iste
+      // 2. Android Bildirim Kanallarını Kaydet
       final androidImplementation =
           _notificationsPlugin.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
+
+      const AndroidNotificationChannel statusChannel = AndroidNotificationChannel(
+        'alertrox_device_status',
+        'Cihaz Durum Bildirimleri',
+        description: 'Bilgisayar açıldığında ve çevrimiçi olduğunda gelen bildirimler',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+      );
+
+      const AndroidNotificationChannel shutdownChannel = AndroidNotificationChannel(
+        'alertrox_shutdown_status',
+        'Kapatma Bildirimleri',
+        description: 'Bilgisayar kapanırken gösterilen uyarılar',
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+      );
+
+      await androidImplementation?.createNotificationChannel(statusChannel);
+      await androidImplementation?.createNotificationChannel(shutdownChannel);
+
+      // 3. Android 13+ (API 33+) Çalışma zamanı bildirim izni iste
       await androidImplementation?.requestNotificationsPermission();
 
       _initialized = true;
     }
+  }
+
+  Future<void> showTestNotification() async {
+    if (kIsWeb) return;
+
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+      'alertrox_device_status',
+      'Cihaz Durum Bildirimleri',
+      channelDescription:
+          'Bilgisayar açıldığında ve çevrimiçi olduğunda gelen bildirimler',
+      importance: Importance.max,
+      priority: Priority.high,
+      enableVibration: true,
+      playSound: true,
+      icon: '@mipmap/ic_launcher',
+    );
+
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      linux: LinuxNotificationDetails(),
+    );
+
+    await _notificationsPlugin.show(
+      id: 9999,
+      title: '🚨 AlertRox Bildirim Testi',
+      body: 'Tebrikler! Bildirim servisi, ses ve titreşim başarıyla çalışıyor.',
+      notificationDetails: details,
+    );
   }
 
   Future<void> showDeviceOnlineNotification(String deviceName) async {

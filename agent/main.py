@@ -98,7 +98,8 @@ def execute_command(client: AlertRoxClient, command: dict):
             delay = int(payload.get("delay", 10))
         except (ValueError, TypeError):
             delay = 10
-        delay = max(5, min(7200, delay))
+        delay = max(5, min(86400, delay))
+        allow_cancel = bool(payload.get("allow_cancel", False))
 
         def _on_timeout():
             print("[AlertRox] ⚠️ Kapanma sayacı tamamlandı! Bilgisayar kapatılıyor...")
@@ -115,12 +116,13 @@ def execute_command(client: AlertRoxClient, command: dict):
             delay_seconds=delay,
             on_cancel=_on_cancel,
             on_timeout=_on_timeout,
+            allow_cancel=allow_cancel,
         )
         shutdown_window_instance.show()
 
         client.update_command_status(cmd_id, "completed")
-        client.log_event("shutdown_scheduled", f"Bilgisayar {delay} saniye sonra kapanacak")
-        print(f"[AlertRox] ⏳ {delay} saniyelik kapanma sayacı başlatıldı!")
+        client.log_event("shutdown_scheduled", f"Bilgisayar {delay} saniye sonra kapanacak (PC iptali: {'açık' if allow_cancel else 'kilitli'})")
+        print(f"[AlertRox] ⏳ {delay} saniyelik kapanma sayacı başlatıldı! (PC iptali: {allow_cancel})")
         return
 
     # Kapatmayı iptal etme komutu

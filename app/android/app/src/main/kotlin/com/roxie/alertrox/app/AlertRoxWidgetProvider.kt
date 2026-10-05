@@ -33,6 +33,21 @@ class AlertRoxWidgetProvider : HomeWidgetProvider() {
                     val statusColor = if (isOnline) 0xFF10B981.toInt() else 0xFFEF4444.toInt()
                     setTextColor(R.id.widget_status, statusColor)
 
+                    val widgetTheme = widgetData.getString("widget_theme", "dark") ?: "dark"
+                    val isLight = widgetTheme == "light"
+
+                    if (isLight) {
+                        setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_bg_light)
+                        setTextColor(R.id.widget_device_name, 0xFF0F172A.toInt())
+                        setTextColor(R.id.widget_brand, 0xFF64748B.toInt())
+                        setTextColor(R.id.widget_last_seen, 0xFF475569.toInt())
+                    } else {
+                        setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_bg)
+                        setTextColor(R.id.widget_device_name, 0xFFF3F4F6.toInt())
+                        setTextColor(R.id.widget_brand, 0xFF9CA3AF.toInt())
+                        setTextColor(R.id.widget_last_seen, 0xFF9CA3AF.toInt())
+                    }
+
                     // Shutdown countdown alert
                     if (isShuttingDown && shutdownCountdown.isNotEmpty()) {
                         setViewVisibility(R.id.widget_shutdown_box, View.VISIBLE)

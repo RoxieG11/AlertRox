@@ -14,11 +14,12 @@ from tkinter import ttk
 class ShutdownCountdownWindow:
     """PC ekranında görünen canlı kapanma geri sayım penceresi."""
 
-    def __init__(self, delay_seconds: int = 10, on_cancel=None, on_timeout=None):
+    def __init__(self, delay_seconds: int = 10, on_cancel=None, on_timeout=None, allow_cancel: bool = False):
         self.total_seconds = max(5, int(delay_seconds))
         self.remaining_seconds = self.total_seconds
         self.on_cancel = on_cancel
         self.on_timeout = on_timeout
+        self.allow_cancel = allow_cancel
         self.root = None
         self.is_active = False
         self._thread = None
@@ -121,25 +122,38 @@ class ShutdownCountdownWindow:
         )
         info_lbl.pack(pady=(0, 14))
 
-        # ── İptal Et Butonu ──
-        cancel_btn = tk.Button(
-            body,
-            text="✕  Kapatmayı İptal Et (Vazgeç)",
-            font=("Segoe UI", 11, "bold"),
-            bg="#334155",
-            fg=fg_white,
-            activebackground="#475569",
-            activeforeground=fg_white,
-            relief=tk.FLAT,
-            padx=16,
-            pady=8,
-            cursor="hand2",
-            command=self._handle_user_cancel,
-        )
-        cancel_btn.pack(fill=tk.X)
-
-        # Pencere kapatma düğmesine basılırsa da iptal et
-        self.root.protocol("WM_DELETE_WINDOW", self._handle_user_cancel)
+        # ── İptal Et Butonu veya Kilit Bildirimi ──
+        if self.allow_cancel:
+            cancel_btn = tk.Button(
+                body,
+                text="✕  Kapatmayı İptal Et (Vazgeç)",
+                font=("Segoe UI", 11, "bold"),
+                bg="#334155",
+                fg=fg_white,
+                activebackground="#475569",
+                activeforeground=fg_white,
+                relief=tk.FLAT,
+                padx=16,
+                pady=8,
+                cursor="hand2",
+                command=self._handle_user_cancel,
+            )
+            cancel_btn.pack(fill=tk.X)
+            self.root.protocol("WM_DELETE_WINDOW", self._handle_user_cancel)
+        else:
+            lock_frame = tk.Frame(body, bg="#1E293B", padx=8, pady=8)
+            lock_frame.pack(fill=tk.X)
+            lock_lbl = tk.Label(
+                lock_frame,
+                text="🔒 Bu kapatma emri yalnızca telefondan iptal edilebilir.",
+                font=("Segoe UI", 9, "bold"),
+                bg="#1E293B",
+                fg="#FBBF24",
+                wraplength=360,
+            )
+            lock_lbl.pack()
+            # Bilgisayardan kapatma penceresinin çarpı tuşuyla kapatılmasını engelle
+            self.root.protocol("WM_DELETE_WINDOW", lambda: None)
 
         # Geri sayım döngüsü
         self._timer_running = True
