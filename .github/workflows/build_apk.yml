@@ -6,6 +6,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -31,8 +33,36 @@ jobs:
         working-directory: ./app
         run: flutter build apk --release
 
+      - name: Prepare APK file
+        run: cp app/build/app/outputs/flutter-apk/app-release.apk AlertRox.apk
+
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: AlertRox-Android-APK
-          path: app/build/app/outputs/flutter-apk/app-release.apk
+          path: AlertRox.apk
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.2.0
+          name: AlertRox v1.2.0 (Android Release)
+          draft: false
+          prerelease: false
+          files: AlertRox.apk
+          body: |
+            ### 🚨 AlertRox v1.2.0 — Android APK Yayınlandı!
+            
+            Bu sürüm ile eklenen başlıca özellikler:
+            - ⏱️ **Özelleştirilebilir Kapatma Sayacı:** Varsayılan 10 saniye ve çift taraflı (PC ekranında ve mobil uygulamada) canlı sayaç.
+            - 📱 **Yenilenen Masaüstü Widget'ı:** Android çökme hatası düzeltildi, 10 dil desteği ve canlı kapatma bildirimi eklendi.
+            - 🔔 **Android 13+ Bildirimleri:** PC açıldığında telefonunuza sesli ve titreşimli açılış bildirimi.
+            - 💬 **Gelişmiş Sohbet:** PC ve telefon arasında çift yönlü senkronize sohbet temizleme ve modern karanlık tema.
+            - 📥 **Doğrudan Medya İndirme:** Fotoğrafları Galeriye, ses kayıtlarını Downloads klasörüne kaydetme.
+            - 💡 **Açık Kaynak & Ücretsiz Lisans Uyarısı:** Tamamen açık kaynaklı ve ücretsiz.
+            - 👨‍💻 **Geliştirici:** Roxie
+            
+            #### 📲 Nasıl Kurulur?
+            Aşağıdaki `AlertRox.apk` dosyasını telefonunuza doğrudan indirin ve açarak yükleyin.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

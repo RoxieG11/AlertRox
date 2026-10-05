@@ -41,7 +41,9 @@ bash scripts/install_autostart.sh
 ```
 
 ### 3. Mobile App (Android)
-Download pre-compiled `AlertRox.apk` directly from GitHub Actions / Releases or build via Flutter.
+Download and install the APK directly on your Android device via **[📲 Download AlertRox.apk](https://github.com/RoxieG11/AlertRox/releases/latest/download/AlertRox.apk)**.
+
+Or build from source:
 
 ```bash
 cd app

@@ -12,6 +12,10 @@
 [![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Storage-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+<br/>
+
+[![Download APK](https://img.shields.io/badge/📲_Android_APK_İndir-AlertRox.apk_(v1.2.0)-00F0FF?style=for-the-badge&logo=android&logoColor=black)](https://github.com/RoxieG11/AlertRox/releases/latest/download/AlertRox.apk)
+
 ---
 
 ### 🌐 Select Language / Dil Seçimi
@@ -91,7 +95,7 @@ bash scripts/install_autostart.sh
 ```
 
 ### 3️⃣ Android APK Kurulumu (Telefonunuzda)
-- [GitHub Actions](https://github.com/RoxieG11/AlertRox/actions) sekmesinden otomatik derlenen en güncel **`AlertRox.apk`** dosyasını indirin ve telefonunuza kurun.
+- Telefonunuzdan doğrudan **[📲 AlertRox.apk İndir](https://github.com/RoxieG11/AlertRox/releases/latest/download/AlertRox.apk)** linkine dokunarak güncel APK'yı indirin ve kurun.
 - Uygulama içindeki **Ayarlar** kısmından Supabase URL ve Key bilgilerinizi kaydedin.
 - Telefon ana ekranına uzun basarak **AlertRox Widget**'ını masaüstünüze ekleyin!
 

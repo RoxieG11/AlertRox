@@ -41,7 +41,9 @@ bash scripts/install_autostart.sh
 ```
 
 ### 3. Mobil Uygulama (Android)
-GitHub Actions veya Releases kısmından hazır `AlertRox.apk` dosyasını telefonunuza indirip kurun.
+Telefonunuzdan doğrudan **[📲 AlertRox.apk İndir](https://github.com/RoxieG11/AlertRox/releases/latest/download/AlertRox.apk)** linkine dokunarak güncel sürümü kurun.
+
+Kaynak koddan derlemek isterseniz:
 
 ```bash
 cd app
