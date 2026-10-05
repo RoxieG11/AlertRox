@@ -93,6 +93,7 @@ class AppTranslations {
       'media_saved_gallery': 'Galeriye kaydedildi (Pictures/AlertRox)!',
       'media_saved_downloads': 'Downloads klasörüne indirildi (Download/AlertRox)!',
       'media_save_failed': 'İndirme başarısız: ',
+      'developer_credit': 'Geliştirici: Roxie',
     },
     'en': {
       'app_title': 'AlertRox',
@@ -168,6 +169,7 @@ class AppTranslations {
       'media_saved_gallery': 'Saved to Gallery (Pictures/AlertRox)!',
       'media_saved_downloads': 'Saved to Downloads (Download/AlertRox)!',
       'media_save_failed': 'Failed to save: ',
+      'developer_credit': 'Developer: Roxie',
     },
     'de': {
       'app_title': 'AlertRox',
@@ -243,6 +245,7 @@ class AppTranslations {
       'media_saved_gallery': 'In Galerie gespeichert (Pictures/AlertRox)!',
       'media_saved_downloads': 'In Downloads gespeichert (Download/AlertRox)!',
       'media_save_failed': 'Fehler beim Speichern: ',
+      'developer_credit': 'Entwickler: Roxie',
     },
     'ru': {
       'app_title': 'AlertRox',
@@ -318,6 +321,7 @@ class AppTranslations {
       'media_saved_gallery': 'Сохранено в галерею (Pictures/AlertRox)!',
       'media_saved_downloads': 'Сохранено в Downloads (Download/AlertRox)!',
       'media_save_failed': 'Ошибка сохранения: ',
+      'developer_credit': 'Разработчик: Roxie',
     },
     'es': {
       'app_title': 'AlertRox',
@@ -393,6 +397,7 @@ class AppTranslations {
       'media_saved_gallery': '¡Guardado en la Galería (Pictures/AlertRox)!',
       'media_saved_downloads': '¡Guardado en Descargas (Download/AlertRox)!',
       'media_save_failed': 'Error al guardar: ',
+      'developer_credit': 'Desarrollador: Roxie',
     },
     'ar': {
       'app_title': 'AlertRox',
@@ -468,6 +473,7 @@ class AppTranslations {
       'media_saved_gallery': 'تم الحفظ في المعرض (Pictures/AlertRox)!',
       'media_saved_downloads': 'تم الحفظ في التنزيلات (Download/AlertRox)!',
       'media_save_failed': 'فشل الحفظ: ',
+      'developer_credit': 'المطور: Roxie',
     },
     'fr': {
       'app_title': 'AlertRox',
@@ -543,6 +549,7 @@ class AppTranslations {
       'media_saved_gallery': 'Enregistré dans la Galerie (Pictures/AlertRox) !',
       'media_saved_downloads': 'Enregistré dans Téléchargements (Download/AlertRox) !',
       'media_save_failed': 'Échec de l\'enregistrement : ',
+      'developer_credit': 'Développeur : Roxie',
     },
     'pt': {
       'app_title': 'AlertRox',
@@ -618,6 +625,7 @@ class AppTranslations {
       'media_saved_gallery': 'Salvo na Galeria (Pictures/AlertRox)!',
       'media_saved_downloads': 'Salvo em Downloads (Download/AlertRox)!',
       'media_save_failed': 'Falha ao salvar: ',
+      'developer_credit': 'Desenvolvedor: Roxie',
     },
     'zh': {
       'app_title': 'AlertRox',
@@ -693,6 +701,7 @@ class AppTranslations {
       'media_saved_gallery': '已保存至相册 (Pictures/AlertRox)！',
       'media_saved_downloads': '已保存至下载目录 (Download/AlertRox)！',
       'media_save_failed': '保存失败：', 
+      'developer_credit': '开发者: Roxie',
     },
     'ja': {
       'app_title': 'AlertRox',
@@ -768,6 +777,7 @@ class AppTranslations {
       'media_saved_gallery': 'ギャラリーに保存されました (Pictures/AlertRox)！',
       'media_saved_downloads': 'ダウンロードフォルダに保存されました (Download/AlertRox)！',
       'media_save_failed': '保存に失敗しました: ',
+      'developer_credit': '開発者: Roxie',
     },
   };
 }
