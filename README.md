@@ -1,61 +1,97 @@
+<div align="center">
+
+<img src="assets/logo.png" width="140" alt="AlertRox Logo" />
+
 # 🚨 AlertRox
 
-> **AlertRox**, bilgisayarınız açıldığında sizi anında bilgilendiren ve telefonunuzdan uzaktan kapatmanızı/kilitlemenizi sağlayan **%100 Python** tabanlı açık kaynaklı bir güvenlik aracıdır.
+### Open-Source Remote PC Security, Surveillance & Control System
+**Açık Kaynaklı Uzaktan Bilgisayar Güvenlik, İzleme ve Kontrol Sistemi**
+
+[![Android APK CI](https://github.com/RoxieG11/AlertRox/actions/workflows/build_apk.yml/badge.svg)](https://github.com/RoxieG11/AlertRox/actions/workflows/build_apk.yml)
+[![Flutter 3](https://img.shields.io/badge/Flutter-3.47+-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
+[![Supabase](https://img.shields.io/badge/Supabase-Database%20%26%20Storage-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
-## ✨ Özellikler
+### 🌐 Select Language / Dil Seçimi
 
-* 🔔 **Açılış Uyarısı:** Bilgisayar açıldığı anda Supabase üzerinden anlık bildirim.
-* 🛑 **Uzaktan Kapatma:** Dışarıdayken tek tıkla evdeki bilgisayarı güvenle kapatma.
-* 🔒 **Ekran Kilitleme:** Bilgisayarı anında kilit moduna geçirme.
-* 📱 **Mobil Uygulama:** KivyMD ile hazırlanmış, Android'de çalışan şık mobil arayüz.
-* ☁️ **Sıfır Maliyet:** Ücretsiz Supabase katmanı ile modem portu açmadan çalışır.
-* 🛡️ **Gizlilik Odaklı:** API anahtarlarınız yalnızca kendi cihazlarınızda saklanır.
+[🇹🇷 Türkçe](README/README_TR.md) | [🇺🇸 English](README/README_EN.md) | [🇩🇪 Deutsch](README/README_DE.md) | [🇷🇺 Русский](README/README_RU.md) | [🇪🇸 Español](README/README_ES.md) | [🇸🇦 العربية](README/README_AR.md) | [🇫🇷 Français](README/README_FR.md) | [🇧🇷 Português](README/README_PT.md) | [🇨🇳 中文](README/README_ZH.md) | [🇯🇵 日本語](README/README_JA.md)
 
 ---
 
-## 🏗️ Mimari
+</div>
 
+## 📌 What is AlertRox? / AlertRox Nedir?
+
+**AlertRox**, bilgisayarınızın güvenliğini dünyanın neresinde olursanız olun akıllı telefonunuzdan takip etmenizi sağlayan modern, açık kaynaklı bir uzaktan yönetim sistemidir.
+
+- 🖥️ **PC Gözcüsü:** Bilgisayar açıldığı an (kullanıcı giriş yapmasa dahi) arka planda otomatik uyanır, IP ve açılış saatini bildirir.
+- 📱 **Mobil Uygulama:** Flutter ile geliştirilmiş, 10 dilli, Açık/Koyu temalı, zengin özellikli kontrol merkezi.
+- ⚡ **Android Widget:** Telefonun ana ekranına yerleştirilen canlı açık/kapalı durum göstergesi.
+
+---
+
+## ⚡ Core Features / Temel Özellikler
+
+| Özellik | Açıklama |
+| :--- | :--- |
+| 🔒 **Uzaktan Kilitleme** | Tek tuşla bilgisayarın ekranını anında kilitler (`loginctl lock-session`). |
+| 🚪 **Oturumu Kapatma** | Aktif kullanıcı oturumunu uzaktan sonlandırır. |
+| 🛑 **Uzaktan Kapatma** | Bilgisayarı uzaktan güvenli şekilde kapatır (`shutdown`). |
+| 📸 **Ekran Görüntüsü** | PC ekranının o anki görüntüsünü çeker ve anında telefona iletir. |
+| 📷 **Webcam Çekimi** | Bilgisayar kamerasından o an masada oturan kişinin fotoğrafını çeker. |
+| 🎙️ **Mikrofon Kaydı** | 10 saniyelik ortam sesini kaydeder ve dinlemenizi sağlar. |
+| 💬 **Canlı Sohbet** | PC ekranında masaüstü sohbet penceresi açarak karşılıklı anlık mesajlaşma sağlar. |
+| 🖼️ **Medya Yönetimi** | Çekilen tüm görüntü ve sesleri listeler; tek tuşla tümünü temizleme imkanı sunar. |
+| 📱 **Home Screen Widget** | Telefon ana ekranında PC'nin açık mı kapalı mı olduğunu canlı gösterir. |
+
+---
+
+## 🏗️ Architecture / Sistem Mimarisi
+
+```text
+[ Android Smartphone / AlertRox App ]
+          │                    ▲
+  (REST & Realtime)     (Live WebSocket)
+          ▼                    │
+    [ ☁️ Supabase Cloud (PostgreSQL & Storage) ]
+          ▲                    │
+     (Heartbeat)         (Command Poll)
+          │                    ▼
+    [ 🖥️ PC Agent (Linux / Windows Background Service) ]
 ```
-Linux PC (Arka Plan Servisi)  <───>  Supabase (Bulut Köprüsü)  <───>  Android Cihaz (KivyMD APK)
-```
 
 ---
 
-## 🚀 Kurulum
+## 🚀 Quick Start / Hızlı Kurulum
 
-### 1. Supabase Kurulumu
-1. [supabase.com](https://supabase.com) adresinden ücretsiz bir proje oluşturun.
-2. SQL Editöründen `devices` tablosunu oluşturun:
-   ```sql
-   create table devices (
-     id text primary key,
-     name text not null,
-     status text default 'offline',
-     last_boot timestamptz,
-     command text default 'none',
-     updated_at timestamptz default now()
-   );
-   ```
+### 1️⃣ Supabase Kurulumu
+1. Ücretsiz bir [Supabase](https://supabase.com) projesi açın.
+2. Projedeki [`supabase_schema.sql`](supabase_schema.sql) dosyasının tamamını kopyalayın.
+3. Supabase paneli → **SQL Editor** → **New Query** alanına yapıştırıp **Run** butonuna basın.
 
-### 2. PC Ajanının Kurulması
+### 2️⃣ PC Ajanının Kurulumu (Bilgisayarınızda)
 ```bash
-git clone https://github.com/KULLANICI_ADINIZ/AlertRox.git
+# Projeyi klonlayın
+git clone https://github.com/RoxieG11/AlertRox.git
 cd AlertRox
-pip install -r requirements.txt
+
+# .env dosyasını oluşturun ve Supabase bilgilerinizi girin
 cp .env.example .env
-# .env dosyasını Supabase bilgilerinize göre doldurun
-python3 -m agent.main
+nano .env
+
+# Otomatik başlatma servisini kurun
+bash scripts/install_autostart.sh
 ```
 
-### 3. Mobil Uygulama (Buildozer ile APK Derleme)
-```bash
-cd mobile
-buildozer android debug
-```
+### 3️⃣ Android APK Kurulumu (Telefonunuzda)
+- [GitHub Actions](https://github.com/RoxieG11/AlertRox/actions) sekmesinden otomatik derlenen en güncel **`AlertRox.apk`** dosyasını indirin ve telefonunuza kurun.
+- Uygulama içindeki **Ayarlar** kısmından Supabase URL ve Key bilgilerinizi kaydedin.
+- Telefon ana ekranına uzun basarak **AlertRox Widget**'ını masaüstünüze ekleyin!
 
 ---
 
-## 📄 Lisans
-MIT License
+<div align="center">
+<sub>Developed with ❤️ by RoxieG11 • AlertRox Open-Source Security</sub>
+</div>
