@@ -16,6 +16,12 @@ class AppProvider extends ChangeNotifier {
   static const String prefAllowPcCancel = 'app_allow_pc_cancel';
   static const String prefWidgetTheme = 'app_widget_theme';
   static const String prefForegroundService = 'app_foreground_service';
+  static const String prefWidgetMode = 'widget_mode';
+  static const String prefWidgetGlass = 'widget_glass';
+  static const String prefWidgetOpacity = 'widget_opacity';
+  static const String prefWidgetColorMode = 'widget_color_mode';
+  static const String prefWidgetAccent = 'widget_accent';
+  static const String prefWidgetSecondary = 'widget_secondary';
 
   String _currentLanguage = 'tr';
   ThemeMode _themeMode = ThemeMode.dark;
@@ -25,6 +31,14 @@ class AppProvider extends ChangeNotifier {
   bool _allowPcCancel = false;
   String _widgetTheme = 'dark';
   bool _foregroundServiceEnabled = true;
+
+  // Widget appearance state
+  String _widgetMode = 'dark'; // 'dark', 'light', 'system'
+  bool _widgetGlass = true;
+  int _widgetOpacity = 85; // 10 to 100
+  String _widgetColorMode = 'same_as_app'; // 'same_as_app', 'custom'
+  Color _widgetAccentColor = const Color(0xFF00F0FF);
+  Color _widgetSecondaryColor = const Color(0xFF10B981);
 
   Map<String, dynamic>? _selectedDevice;
   List<Map<String, dynamic>> _devices = [];
@@ -45,6 +59,13 @@ class AppProvider extends ChangeNotifier {
   String get widgetTheme => _widgetTheme;
   bool get foregroundServiceEnabled => _foregroundServiceEnabled;
 
+  String get widgetMode => _widgetMode;
+  bool get widgetGlass => _widgetGlass;
+  int get widgetOpacity => _widgetOpacity;
+  String get widgetColorMode => _widgetColorMode;
+  Color get widgetAccentColor => _widgetAccentColor;
+  Color get widgetSecondaryColor => _widgetSecondaryColor;
+
   Map<String, dynamic>? get selectedDevice => _selectedDevice;
   List<Map<String, dynamic>> get devices => _devices;
   bool get isLoading => _isLoading;
@@ -59,6 +80,9 @@ class AppProvider extends ChangeNotifier {
     _periodicEvaluationTimer?.cancel();
     super.dispose();
   }
+
+  bool _isAuthenticated = false;
+  bool get isAuthenticated => _isAuthenticated;
 
   Future<void> initialize() async {
     _isLoading = true;
@@ -92,22 +116,105 @@ class AppProvider extends ChangeNotifier {
       _widgetTheme = prefs.getString(prefWidgetTheme) ?? 'dark';
       _foregroundServiceEnabled = prefs.getBool(prefForegroundService) ?? true;
 
-      await NotificationService().init();
-
-      // Foreground service setup
-      if (_foregroundServiceEnabled) {
-        await AlertRoxForegroundService.start();
+      // Widget settings
+      _widgetMode = prefs.getString(prefWidgetMode) ?? _widgetTheme;
+      _widgetGlass = prefs.getBool(prefWidgetGlass) ?? true;
+      _widgetOpacity = prefs.getInt(prefWidgetOpacity) ?? 85;
+      _widgetColorMode = prefs.getString(prefWidgetColorMode) ?? 'same_as_app';
+      final savedWidgetAccent = prefs.getInt(prefWidgetAccent);
+      if (savedWidgetAccent != null) {
+        _widgetAccentColor = Color(savedWidgetAccent);
+      }
+      final savedWidgetSecondary = prefs.getInt(prefWidgetSecondary);
+      if (savedWidgetSecondary != null) {
+        _widgetSecondaryColor = Color(savedWidgetSecondary);
       }
 
-      await loadDevices();
-      _listenToDeviceStream();
+      await NotificationService().init();
 
-      // Periodic evaluation every 10 seconds to recalculate online/offline states
-      _periodicEvaluationTimer?.cancel();
-      _periodicEvaluationTimer = Timer.periodic(
-        const Duration(seconds: 10),
-        (_) => _evaluateOnlineStates(),
+      // Check Supabase authentication
+      _isAuthenticated = await SupabaseService().initialize();
+
+      if (_isAuthenticated) {
+        if (_foregroundServiceEnabled) {
+          await AlertRoxForegroundService.start();
+        }
+
+        await loadDevices();
+        _listenToDeviceStream();
+
+        // Periodic evaluation every 10 seconds to recalculate online/offline states
+        _periodicEvaluationTimer?.cancel();
+        _periodicEvaluationTimer = Timer.periodic(
+          const Duration(seconds: 10),
+          (_) => _evaluateOnlineStates(),
+        );
+      }
+    } catch (e) {
+      _errorMessage = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> login({
+    required String url,
+    required String anonKey,
+    required String email,
+    required String password,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final res = await SupabaseService().signIn(
+        url: url,
+        anonKey: anonKey,
+        email: email,
+        password: password,
       );
+
+      if (res.session != null) {
+        _isAuthenticated = true;
+        if (_foregroundServiceEnabled) {
+          await AlertRoxForegroundService.start();
+        }
+
+        await loadDevices();
+        _listenToDeviceStream();
+
+        _periodicEvaluationTimer?.cancel();
+        _periodicEvaluationTimer = Timer.periodic(
+          const Duration(seconds: 10),
+          (_) => _evaluateOnlineStates(),
+        );
+        return true;
+      }
+      _errorMessage = 'Giriş oturumu oluşturulamadı.';
+      return false;
+    } catch (e) {
+      _errorMessage = e.toString();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> signOut() async {
+    _isLoading = true;
+    notifyListeners();
+
+    try {
+      _deviceSubscription?.cancel();
+      _periodicEvaluationTimer?.cancel();
+      await AlertRoxForegroundService.stop();
+      await SupabaseService().signOut();
+      _isAuthenticated = false;
+      _devices = [];
+      _selectedDevice = null;
     } catch (e) {
       _errorMessage = e.toString();
     } finally {
@@ -137,13 +244,34 @@ class AppProvider extends ChangeNotifier {
     });
   }
 
+  void _pushWidgetUpdate() {
+    final effectiveAccent = _widgetColorMode == 'same_as_app' ? _accentColor : _widgetAccentColor;
+    final effectiveSecondary = _widgetColorMode == 'same_as_app' ? _secondaryColor : _widgetSecondaryColor;
+    WidgetService.updateWidget(
+      device: _selectedDevice,
+      isOnline: isDeviceOnline(_selectedDevice),
+      langCode: _currentLanguage,
+      widgetTheme: _widgetMode,
+      widgetMode: _widgetMode,
+      widgetGlass: _widgetGlass,
+      widgetOpacity: _widgetOpacity,
+      widgetAccent: effectiveAccent,
+      widgetSecondary: effectiveSecondary,
+    );
+  }
+
   void _evaluateOnlineStates() {
     if (_devices.isEmpty) return;
+    bool hasChanged = false;
 
     for (final dev in _devices) {
       final id = (dev['device_id'] ?? dev['id']).toString();
       final isOnlineNow = isDeviceOnline(dev);
       final wasOnline = _previousOnlineState[id];
+
+      if (wasOnline != isOnlineNow) {
+        hasChanged = true;
+      }
 
       // Check if device booted recently (last_boot within 90 seconds)
       bool isRecentBoot = false;
@@ -165,8 +293,6 @@ class AppProvider extends ChangeNotifier {
           (wasOnline == null && isOnlineNow && isRecentBoot);
 
       if (shouldNotify && !_notifiedBootDeviceIds.contains(id)) {
-        // Fallback: If foreground service is disabled, AppProvider fires the notification.
-        // If foreground service is enabled, WatchdogTaskHandler handles it to prevent duplicates.
         if (!_foregroundServiceEnabled) {
           final name = dev['name'] ?? dev['device_name'] ?? 'PC';
           NotificationService().showDeviceOnlineNotification(name.toString());
@@ -186,13 +312,10 @@ class AppProvider extends ChangeNotifier {
       _previousOnlineState[id] = isOnlineNow;
     }
 
-    notifyListeners();
-    WidgetService.updateWidget(
-      device: _selectedDevice,
-      isOnline: isDeviceOnline(_selectedDevice),
-      langCode: _currentLanguage,
-      widgetTheme: _widgetTheme,
-    );
+    if (hasChanged) {
+      notifyListeners();
+      _pushWidgetUpdate();
+    }
   }
 
   Future<void> setLanguage(String langCode) async {
@@ -200,13 +323,7 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(prefLanguage, langCode);
-
-    WidgetService.updateWidget(
-      device: _selectedDevice,
-      isOnline: isDeviceOnline(_selectedDevice),
-      langCode: langCode,
-      widgetTheme: _widgetTheme,
-    );
+    _pushWidgetUpdate();
   }
 
   Future<void> setThemeMode(ThemeMode mode) async {
@@ -217,6 +334,9 @@ class AppProvider extends ChangeNotifier {
     if (mode == ThemeMode.light) themeStr = 'light';
     if (mode == ThemeMode.system) themeStr = 'system';
     await prefs.setString(prefThemeMode, themeStr);
+    if (_widgetColorMode == 'same_as_app') {
+      _pushWidgetUpdate();
+    }
   }
 
   Future<void> setThemeColors(Color primary, [Color? secondary]) async {
@@ -226,6 +346,9 @@ class AppProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(prefAccentColor, primary.toARGB32());
     await prefs.setInt(prefSecondaryColor, _secondaryColor.toARGB32());
+    if (_widgetColorMode == 'same_as_app') {
+      _pushWidgetUpdate();
+    }
   }
 
   Future<void> setGlassmorphicMode(bool enabled) async {
@@ -243,17 +366,50 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> setWidgetTheme(String theme) async {
-    _widgetTheme = theme;
+    await setWidgetMode(theme);
+  }
+
+  Future<void> setWidgetMode(String mode) async {
+    _widgetMode = mode;
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(prefWidgetTheme, theme);
+    await prefs.setString(prefWidgetMode, mode);
+    await prefs.setString(prefWidgetTheme, mode);
+    _pushWidgetUpdate();
+  }
 
-    WidgetService.updateWidget(
-      device: _selectedDevice,
-      isOnline: isDeviceOnline(_selectedDevice),
-      langCode: _currentLanguage,
-      widgetTheme: theme,
-    );
+  Future<void> setWidgetGlass(bool glass) async {
+    _widgetGlass = glass;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(prefWidgetGlass, glass);
+    _pushWidgetUpdate();
+  }
+
+  Future<void> setWidgetOpacity(int opacity) async {
+    _widgetOpacity = opacity.clamp(10, 100);
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(prefWidgetOpacity, _widgetOpacity);
+    _pushWidgetUpdate();
+  }
+
+  Future<void> setWidgetColorMode(String mode) async {
+    _widgetColorMode = mode;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(prefWidgetColorMode, mode);
+    _pushWidgetUpdate();
+  }
+
+  Future<void> setWidgetColors(Color accent, [Color? secondary]) async {
+    _widgetAccentColor = accent;
+    _widgetSecondaryColor = secondary ?? accent;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(prefWidgetAccent, accent.toARGB32());
+    await prefs.setInt(prefWidgetSecondary, _widgetSecondaryColor.toARGB32());
+    _pushWidgetUpdate();
   }
 
   Future<void> setForegroundServiceEnabled(bool enabled) async {
@@ -272,12 +428,13 @@ class AppProvider extends ChangeNotifier {
   void setSelectedDevice(Map<String, dynamic>? device) {
     _selectedDevice = device;
     notifyListeners();
-    WidgetService.updateWidget(
-      device: _selectedDevice,
-      isOnline: isDeviceOnline(_selectedDevice),
-      langCode: _currentLanguage,
-      widgetTheme: _widgetTheme,
-    );
+    if (device != null) {
+      final id = (device['device_id'] ?? device['id']).toString();
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setString('selected_device_id', id);
+      });
+    }
+    _pushWidgetUpdate();
   }
 
   Future<void> loadDevices() async {

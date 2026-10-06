@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
+import '../widgets/permission_onboarding_dialog.dart';
 import 'dashboard_screen.dart';
 import 'chat_screen.dart';
 import 'media_screen.dart';
@@ -17,12 +18,25 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = const [
-    DashboardScreen(),
-    ChatScreen(),
-    MediaScreen(),
-    SettingsScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkOnboardingPermissions();
+    });
+  }
+
+  Future<void> _checkOnboardingPermissions() async {
+    final shouldShow = await PermissionOnboardingDialog.shouldShow();
+    if (shouldShow && mounted) {
+      final provider = Provider.of<AppProvider>(context, listen: false);
+      await PermissionOnboardingDialog.show(
+        context,
+        langCode: provider.currentLanguage,
+        accentColor: provider.accentColor,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +105,12 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         extendBody: provider.glassmorphicMode,
         body: IndexedStack(
           index: _currentIndex,
-          children: _screens,
+          children: [
+            const DashboardScreen(),
+            ChatScreen(isActive: _currentIndex == 1),
+            const MediaScreen(),
+            const SettingsScreen(),
+          ],
         ),
         bottomNavigationBar: navBar,
       ),

@@ -979,35 +979,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
       );
     }
 
+    final items = _activityLogs.take(5).toList();
     return GlassCard(
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: _activityLogs.length > 5 ? 5 : _activityLogs.length,
-        separatorBuilder: (_, _) => const Divider(height: 1),
-        itemBuilder: (ctx, index) {
-          final log = _activityLogs[index];
-          final event = log['event_type'] ?? 'log';
-          final msg = log['message'] ?? '';
-          final time = _formatTime(log['created_at']);
-
-          return ListTile(
-            leading: Icon(
-              _getLogIcon(event),
-              color: AppTheme.primaryTeal,
-              size: 20,
+      child: Column(
+        children: [
+          for (int i = 0; i < items.length; i++) ...[
+            if (i > 0) const Divider(height: 1),
+            ListTile(
+              leading: Icon(
+                _getLogIcon(items[i]['event_type'] ?? 'log'),
+                color: AppTheme.primaryTeal,
+                size: 20,
+              ),
+              title: Text(
+                items[i]['message'] ?? '',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+              ),
+              trailing: Text(
+                _formatTime(items[i]['created_at']),
+                style: const TextStyle(
+                    fontSize: 11, color: AppTheme.darkTextMuted),
+              ),
             ),
-            title: Text(
-              msg,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-            ),
-            trailing: Text(
-              time,
-              style: const TextStyle(
-                  fontSize: 11, color: AppTheme.darkTextMuted),
-            ),
-          );
-        },
+          ],
+        ],
       ),
     );
   }

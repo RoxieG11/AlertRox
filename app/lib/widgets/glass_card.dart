@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
@@ -76,16 +75,13 @@ class GlassCard extends StatelessWidget {
     Widget result = ClipRRect(
       borderRadius: effectiveRadius,
       clipBehavior: clipBehavior != Clip.none ? clipBehavior : Clip.antiAlias,
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          decoration: BoxDecoration(
-            color: effectiveBg,
-            borderRadius: effectiveRadius,
-            border: effectiveBorder,
-          ),
-          child: content,
+      child: Container(
+        decoration: BoxDecoration(
+          color: effectiveBg,
+          borderRadius: effectiveRadius,
+          border: effectiveBorder,
         ),
+        child: content,
       ),
     );
 

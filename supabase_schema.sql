@@ -13,6 +13,7 @@
 create table if not exists devices (
   id          uuid default gen_random_uuid() primary key,
   device_id   text unique not null,            -- Makine benzersiz ID'si
+  owner_id    uuid default auth.uid() references auth.users(id),
   name        text not null default 'My-PC',   -- Kullanıcının verdiği isim
   status      text not null default 'offline', -- 'online' / 'offline'
   last_boot   timestamptz,                     -- Son açılış zamanı
@@ -30,6 +31,7 @@ create table if not exists devices (
 create table if not exists commands (
   id            uuid default gen_random_uuid() primary key,
   device_id     text not null,                      -- Hedef cihaz ID'si
+  owner_id      uuid default auth.uid() references auth.users(id),
   command_type  text not null,                      -- 'shutdown' / 'lock' / 'screenshot' / 'webcam' / 'mic_record'
   status        text not null default 'pending',    -- 'pending' / 'executing' / 'completed' / 'failed'
   payload       jsonb default '{}'::jsonb,          -- Ek parametreler
@@ -46,6 +48,7 @@ create table if not exists commands (
 create table if not exists activity_log (
   id          uuid default gen_random_uuid() primary key,
   device_id   text not null,
+  owner_id    uuid default auth.uid() references auth.users(id),
   event_type  text not null,
   message     text,
   created_at  timestamptz default now()
@@ -90,24 +93,31 @@ alter table devices enable row level security;
 alter table commands enable row level security;
 alter table activity_log enable row level security;
 
--- Varsa eski politikaları temizle ve yenilerini oluştur
+-- Varsa eski politikaları temizle
 drop policy if exists "Service role full access on devices" on devices;
-create policy "Service role full access on devices"
-  on devices for all
-  using (true)
-  with check (true);
-
 drop policy if exists "Service role full access on commands" on commands;
-create policy "Service role full access on commands"
-  on commands for all
-  using (true)
-  with check (true);
-
 drop policy if exists "Service role full access on activity_log" on activity_log;
-create policy "Service role full access on activity_log"
-  on activity_log for all
-  using (true)
-  with check (true);
+
+drop policy if exists "Authenticated owner access on devices" on devices;
+create policy "Authenticated owner access on devices"
+  on devices for all to authenticated
+  using (owner_id = auth.uid())
+  with check (owner_id = auth.uid());
+
+drop policy if exists "Authenticated owner access on commands" on commands;
+create policy "Authenticated owner access on commands"
+  on commands for all to authenticated
+  using (owner_id = auth.uid())
+  with check (owner_id = auth.uid());
+
+drop policy if exists "Authenticated owner access on activity_log" on activity_log;
+create policy "Authenticated owner access on activity_log"
+  on activity_log for all to authenticated
+  using (owner_id = auth.uid())
+  with check (owner_id = auth.uid());
+
+revoke all on table devices, commands, activity_log from anon;
+grant select, insert, update, delete on table devices, commands, activity_log to authenticated;
 
 
 -- ──────────────────────────────────────────────
@@ -132,6 +142,7 @@ end $$;
 create table if not exists messages (
   id          uuid default gen_random_uuid() primary key,
   device_id   text not null,
+  owner_id    uuid default auth.uid() references auth.users(id),
   sender      text not null, -- 'mobile' veya 'pc'
   text        text not null,
   created_at  timestamptz default now()
@@ -143,10 +154,14 @@ create index if not exists idx_messages_device
 alter table messages enable row level security;
 
 drop policy if exists "Service role full access on messages" on messages;
-create policy "Service role full access on messages"
-  on messages for all
-  using (true)
-  with check (true);
+drop policy if exists "Authenticated owner access on messages" on messages;
+create policy "Authenticated owner access on messages"
+  on messages for all to authenticated
+  using (owner_id = auth.uid())
+  with check (owner_id = auth.uid());
+
+revoke all on table messages from anon;
+grant select, insert, update, delete on table messages to authenticated;
 
 do $$ 
 begin 

@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:home_widget/home_widget.dart';
 import '../constants/translations.dart';
 
@@ -11,6 +12,11 @@ class WidgetService {
     bool isShuttingDown = false,
     String? shutdownCountdown,
     String widgetTheme = 'dark',
+    String widgetMode = 'dark',
+    bool widgetGlass = true,
+    int widgetOpacity = 85,
+    Color? widgetAccent,
+    Color? widgetSecondary,
   }) async {
     if (kIsWeb || !Platform.isAndroid) return;
 
@@ -39,6 +45,17 @@ class WidgetService {
       await HomeWidget.saveWidgetData<String>(
           'shutdown_countdown', shutdownCountdown ?? '');
       await HomeWidget.saveWidgetData<String>('widget_theme', widgetTheme);
+      await HomeWidget.saveWidgetData<String>('widget_mode', widgetMode);
+      await HomeWidget.saveWidgetData<bool>('widget_glass', widgetGlass);
+      await HomeWidget.saveWidgetData<int>('widget_opacity', widgetOpacity);
+      await HomeWidget.saveWidgetData<int>(
+        'widget_accent',
+        (widgetAccent ?? const Color(0xFF00F0FF)).toARGB32(),
+      );
+      await HomeWidget.saveWidgetData<int>(
+        'widget_secondary',
+        (widgetSecondary ?? const Color(0xFF10B981)).toARGB32(),
+      );
 
       await HomeWidget.updateWidget(
         name: 'AlertRoxWidgetProvider',

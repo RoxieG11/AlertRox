@@ -4,7 +4,7 @@
     android:minHeight="90dp"
     android:targetCellWidth="3"
     android:targetCellHeight="2"
-    android:updatePeriodMillis="1800000"
+    android:updatePeriodMillis="900000"
     android:initialLayout="@layout/alertrox_widget"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen" />

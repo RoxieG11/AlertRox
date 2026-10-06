@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -8,9 +9,10 @@ import '../providers/app_provider.dart';
 import '../constants/translations.dart';
 import '../services/supabase_service.dart';
 import '../services/notification_service.dart';
-import '../services/foreground_service.dart';
 import '../constants/theme.dart';
 import '../widgets/glass_card.dart';
+import 'appearance_screen.dart';
+import 'login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -22,27 +24,42 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _urlController = TextEditingController();
   final TextEditingController _keyController = TextEditingController();
-  bool _isSaving = false;
+  String _userEmail = '';
   bool _isIgnoringBattery = false;
+  bool _notificationGranted = false;
 
   @override
   void initState() {
     super.initState();
     _loadCurrentConfig();
-    _checkBatteryStatus();
+    _checkSystemPermissions();
   }
 
-  Future<void> _checkBatteryStatus() async {
+  Future<void> _checkSystemPermissions() async {
     if (!kIsWeb && Platform.isAndroid) {
-      final status = await FlutterForegroundTask.isIgnoringBatteryOptimizations;
-      if (mounted) setState(() => _isIgnoringBattery = status);
+      final battery =
+          await FlutterForegroundTask.isIgnoringBatteryOptimizations;
+      final notif =
+          await FlutterForegroundTask.checkNotificationPermission();
+      if (mounted) {
+        setState(() {
+          _isIgnoringBattery = battery;
+          _notificationGranted =
+              notif == NotificationPermission.granted;
+        });
+      }
     }
   }
 
   Future<void> _loadCurrentConfig() async {
-    final creds = await SupabaseService().getSavedCredentials();
-    _urlController.text = creds['url'] ?? '';
-    _keyController.text = creds['key'] ?? '';
+    final cfg = await SupabaseService().getSavedConfig();
+    if (mounted) {
+      setState(() {
+        _urlController.text = cfg['url'] ?? '';
+        _keyController.text = cfg['anon_key'] ?? '';
+        _userEmail = cfg['email'] ?? SupabaseService().currentUser?.email ?? '';
+      });
+    }
   }
 
   @override
@@ -52,194 +69,109 @@ class _SettingsScreenState extends State<SettingsScreen> {
     super.dispose();
   }
 
-  Future<void> _saveConfig() async {
+  Future<void> _handleSignOut() async {
     final provider = Provider.of<AppProvider>(context, listen: false);
-    setState(() => _isSaving = true);
-
-    try {
-      final url = _urlController.text.trim();
-      final key = _keyController.text.trim();
-      await SupabaseService().saveCredentials(url, key);
-      await AlertRoxForegroundService.syncCredentials(url, key);
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(provider.tr('settings_saved')),
-            backgroundColor: AppTheme.statusOnline,
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Oturumu Kapat'),
+        content: const Text('Hesabınızdan çıkış yapmak istediğinize emin misiniz?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(provider.tr('btn_cancel')),
           ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.statusOffline),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Çıkış Yap', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await provider.signOut();
+      if (mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
+          (route) => false,
         );
       }
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
-
-  Future<void> _resetDefaults() async {
-    final provider = Provider.of<AppProvider>(context, listen: false);
-    await SupabaseService().resetCredentials();
-    await AlertRoxForegroundService.syncCredentials(
-      SupabaseService.defaultUrl,
-      SupabaseService.defaultKey,
-    );
-    _urlController.text = SupabaseService.defaultUrl;
-    _keyController.text = SupabaseService.defaultKey;
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(provider.tr('settings_saved')),
-          backgroundColor: AppTheme.statusOnline,
-        ),
-      );
     }
   }
 
   Future<void> _openGitHubProfile() async {
-    final uri = Uri.parse('https://github.com/RoxieG11');
+    const url = 'https://github.com/RoxieG11';
+    final uri = Uri.parse(url);
     try {
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      final launched =
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!launched) {
+        await Clipboard.setData(const ClipboardData(text: url));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Link panoya kopyalandı: $url'),
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
       }
-    } catch (e) {
-      debugPrint('GitHub profile launch error: $e');
+    } catch (_) {
+      await Clipboard.setData(const ClipboardData(text: url));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Link panoya kopyalandı: $url'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     }
   }
 
-  void _showRgbColorPickerDialog(BuildContext context, AppProvider provider) {
-    int r = (provider.accentColor.r * 255).round();
-    int g = (provider.accentColor.g * 255).round();
-    int b = (provider.accentColor.b * 255).round();
-
+  void _showLanguageDialog(BuildContext context, AppProvider provider) {
     showDialog(
       context: context,
-      builder: (dialogCtx) {
-        return StatefulBuilder(
-          builder: (ctx, setDialogState) {
-            final currentColor = Color.fromARGB(255, r, g, b);
-            final hex =
-                '#${r.toRadixString(16).padLeft(2, '0')}${g.toRadixString(16).padLeft(2, '0')}${b.toRadixString(16).padLeft(2, '0')}'
-                    .toUpperCase();
+      builder: (ctx) => AlertDialog(
+        title: Text(provider.tr('settings_language')),
+        contentPadding: const EdgeInsets.symmetric(vertical: 12),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: AppTranslations.supportedLocales.length,
+            itemBuilder: (ctx, index) {
+              final loc = AppTranslations.supportedLocales[index];
+              final code = loc['code']!;
+              final isSelected = provider.currentLanguage == code;
 
-            return AlertDialog(
-              title: Row(
-                children: [
-                  const Icon(Icons.colorize_rounded, size: 22),
-                  const SizedBox(width: 8),
-                  Text(provider.tr('settings_custom_rgb')),
-                ],
-              ),
-              content: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      height: 56,
-                      decoration: BoxDecoration(
-                        color: currentColor,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.3),
-                          width: 1.5,
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        hex,
-                        style: TextStyle(
-                          color: (r * 0.299 + g * 0.587 + b * 0.114) > 186
-                              ? Colors.black
-                              : Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          letterSpacing: 1.2,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 48,
-                          child: Text('R: $r',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.redAccent)),
-                        ),
-                        Expanded(
-                          child: Slider(
-                            value: r.toDouble(),
-                            min: 0,
-                            max: 255,
-                            activeColor: Colors.redAccent,
-                            onChanged: (v) =>
-                                setDialogState(() => r = v.round()),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 48,
-                          child: Text('G: $g',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.greenAccent)),
-                        ),
-                        Expanded(
-                          child: Slider(
-                            value: g.toDouble(),
-                            min: 0,
-                            max: 255,
-                            activeColor: Colors.greenAccent,
-                            onChanged: (v) =>
-                                setDialogState(() => g = v.round()),
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: 48,
-                          child: Text('B: $b',
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: Colors.lightBlueAccent)),
-                        ),
-                        Expanded(
-                          child: Slider(
-                            value: b.toDouble(),
-                            min: 0,
-                            max: 255,
-                            activeColor: Colors.lightBlueAccent,
-                            onChanged: (v) =>
-                                setDialogState(() => b = v.round()),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
+              return ListTile(
+                leading: Text(
+                  loc['flag']!,
+                  style: const TextStyle(fontSize: 22),
                 ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(dialogCtx),
-                  child: Text(provider.tr('btn_cancel')),
+                title: Text(
+                  loc['name']!,
+                  style: TextStyle(
+                    fontWeight:
+                        isSelected ? FontWeight.bold : FontWeight.normal,
+                    color: isSelected ? provider.accentColor : null,
+                  ),
                 ),
-                ElevatedButton(
-                  onPressed: () {
-                    provider.setThemeColors(currentColor);
-                    Navigator.pop(dialogCtx);
-                  },
-                  child: Text(provider.tr('apply_color')),
-                ),
-              ],
-            );
-          },
-        );
-      },
+                trailing: isSelected
+                    ? Icon(Icons.check_circle, color: provider.accentColor)
+                    : null,
+                onTap: () {
+                  provider.setLanguage(code);
+                  Navigator.pop(ctx);
+                },
+              );
+            },
+          ),
+        ),
+      ),
     );
   }
 
@@ -254,410 +186,398 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // ── 1. Görünüm & Tema Bölümü ──
+          // ── 1. Görünüm & Tema (Appearance Page Nav) ──
           _buildSectionHeader(provider.tr('settings_appearance_theme')),
           GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  RadioListTile<ThemeMode>(
-                    value: ThemeMode.dark,
-                    groupValue: provider.themeMode,
-                    title: Text(provider.tr('theme_dark')),
-                    secondary: const Icon(Icons.dark_mode_outlined),
-                    onChanged: (mode) {
-                      if (mode != null) provider.setThemeMode(mode);
-                    },
-                  ),
-                  RadioListTile<ThemeMode>(
-                    value: ThemeMode.light,
-                    groupValue: provider.themeMode,
-                    title: Text(provider.tr('theme_light')),
-                    secondary: const Icon(Icons.light_mode_outlined),
-                    onChanged: (mode) {
-                      if (mode != null) provider.setThemeMode(mode);
-                    },
-                  ),
-                  RadioListTile<ThemeMode>(
-                    value: ThemeMode.system,
-                    groupValue: provider.themeMode,
-                    title: Text(provider.tr('theme_system')),
-                    secondary: const Icon(Icons.settings_suggest_outlined),
-                    onChanged: (mode) {
-                      if (mode != null) provider.setThemeMode(mode);
-                    },
-                  ),
-                  const Divider(height: 20),
-
-                  // Saydam Mod (Glassmorphism)
-                  SwitchListTile(
-                    value: provider.glassmorphicMode,
-                    title: Text(provider.tr('settings_glassmorphic')),
-                    subtitle: Text(provider.tr('settings_glassmorphic_desc'),
-                        style: const TextStyle(fontSize: 12)),
-                    secondary: const Icon(Icons.blur_on_rounded),
-                    activeThumbColor: provider.accentColor,
-                    onChanged: (val) => provider.setGlassmorphicMode(val),
-                  ),
-                  const Divider(height: 20),
-
-                  // Hazır Renk Paletleri
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    child: Text(
-                      provider.tr('settings_theme_presets'),
-                      style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: AppTheme.darkTextMuted),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: AppTheme.presets.map((preset) {
-                      final isSelected =
-                          provider.accentColor.toARGB32() == preset.primary.toARGB32();
-                      return ChoiceChip(
-                        avatar: Container(
-                          width: 14,
-                          height: 14,
-                          decoration: BoxDecoration(
-                            color: preset.primary,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                        label: Text(preset.name,
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight:
-                                  isSelected ? FontWeight.bold : FontWeight.normal,
-                            )),
-                        selected: isSelected,
-                        selectedColor: preset.primary.withValues(alpha: 0.25),
-                        onSelected: (selected) {
-                          if (selected) {
-                            provider.setThemeColors(preset.primary, preset.secondary);
-                          }
-                        },
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Özel RGB Renk Seçici Butonu
-                  ListTile(
-                    leading: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: provider.accentColor,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.4), width: 1.5),
-                      ),
-                    ),
-                    title: Text(provider.tr('settings_custom_rgb')),
-                    subtitle: Text(
-                        '#${provider.accentColor.toARGB32().toRadixString(16).substring(2).toUpperCase()}'),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => _showRgbColorPickerDialog(context, provider),
-                  ),
-                  const Divider(height: 20),
-
-                  // Widget Teması
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          provider.tr('settings_widget_theme'),
-                          style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.darkTextMuted),
-                        ),
-                        SegmentedButton<String>(
-                          segments: [
-                            ButtonSegment(
-                              value: 'dark',
-                              label: Text(provider.tr('settings_widget_dark')),
-                              icon: const Icon(Icons.dark_mode, size: 16),
-                            ),
-                            ButtonSegment(
-                              value: 'light',
-                              label: Text(provider.tr('settings_widget_light')),
-                              icon: const Icon(Icons.light_mode, size: 16),
-                            ),
-                          ],
-                          selected: {provider.widgetTheme},
-                          onSelectionChanged: (set) {
-                            provider.setWidgetTheme(set.first);
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
+            child: ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: provider.accentColor.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.palette_rounded, color: provider.accentColor),
               ),
+              title: Text(
+                provider.tr('settings_appearance_nav'),
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                provider.tr('settings_appearance_nav_desc'),
+                style: const TextStyle(fontSize: 12),
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AppearanceScreen()),
+                );
+              },
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
           // ── 2. Bildirim & Gözcü Servisi ──
           _buildSectionHeader(provider.tr('settings_foreground')),
           GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  SwitchListTile(
-                    value: provider.foregroundServiceEnabled,
-                    title: Text(provider.tr('settings_foreground')),
-                    subtitle: Text(provider.tr('settings_foreground_desc'),
-                        style: const TextStyle(fontSize: 12)),
-                    secondary: const Icon(Icons.notifications_active_outlined),
-                    activeThumbColor: provider.accentColor,
-                    onChanged: (val) =>
-                        provider.setForegroundServiceEnabled(val),
+            child: Column(
+              children: [
+                SwitchListTile(
+                  value: provider.foregroundServiceEnabled,
+                  title: Text(provider.tr('settings_foreground')),
+                  subtitle: Text(
+                    provider.tr('settings_foreground_desc'),
+                    style: const TextStyle(fontSize: 12),
                   ),
-                  const Divider(height: 16),
+                  secondary:
+                      const Icon(Icons.notifications_active_outlined),
+                  activeThumbColor: provider.accentColor,
+                  onChanged: (val) =>
+                      provider.setForegroundServiceEnabled(val),
+                ),
+                if (!kIsWeb && Platform.isAndroid && !_notificationGranted) ...[
+                  const Divider(height: 1),
                   ListTile(
-                    leading: const Icon(Icons.ring_volume_outlined),
-                    title: Text(provider.tr('settings_test_notification')),
+                    leading: const Icon(Icons.notification_important_rounded,
+                        color: AppTheme.statusWarning),
+                    title: Text(
+                      provider.tr('permission_notification_title'),
+                      style: const TextStyle(
+                          fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
                     subtitle: Text(
-                        provider.tr('settings_test_notification_desc'),
-                        style: const TextStyle(fontSize: 12)),
+                      provider.tr('permission_notification_desc'),
+                      style: const TextStyle(fontSize: 11.5),
+                    ),
                     trailing: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
-                      ),
-                      onPressed: () async {
-                        await NotificationService().showTestNotification();
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(provider
-                                  .tr('settings_test_notification_sent')),
-                              backgroundColor: AppTheme.statusOnline,
-                            ),
-                          );
-                        }
-                      },
-                      child: const Icon(Icons.send_rounded, size: 16),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // ── 3. Arka Planda Çalışmayı Garantile (Pil & Sistem İzinleri) ──
-          _buildSectionHeader(provider.tr('settings_battery_optimization')),
-          GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: Icon(
-                      _isIgnoringBattery
-                          ? Icons.battery_charging_full_rounded
-                          : Icons.battery_alert_rounded,
-                      color: _isIgnoringBattery
-                          ? AppTheme.statusOnline
-                          : AppTheme.statusWarning,
-                    ),
-                    title: Text(provider.tr('settings_battery_ignore')),
-                    subtitle: Text(
-                      provider.tr('settings_battery_ignore_desc'),
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    trailing: _isIgnoringBattery
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color:
-                                  AppTheme.statusOnline.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color:
-                                    AppTheme.statusOnline.withValues(alpha: 0.5),
-                              ),
-                            ),
-                            child: Text(
-                              provider
-                                  .tr('settings_battery_status_unrestricted'),
-                              style: const TextStyle(
-                                color: AppTheme.statusOnline,
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          )
-                        : ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 10, vertical: 6),
-                            ),
-                            onPressed: () async {
-                              await FlutterForegroundTask
-                                  .requestIgnoreBatteryOptimization();
-                              await Future.delayed(
-                                  const Duration(seconds: 1));
-                              await _checkBatteryStatus();
-                            },
-                            child: Text(
-                              provider.tr('settings_battery_status_restricted'),
-                              style: const TextStyle(fontSize: 11),
-                            ),
-                          ),
-                  ),
-                  const Divider(height: 16),
-                  ListTile(
-                    leading: const Icon(Icons.settings_suggest_outlined),
-                    title: Text(provider.tr('settings_autostart_title')),
-                    subtitle: Text(
-                      provider.tr('settings_autostart_desc'),
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                    trailing: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 8),
+                            horizontal: 10, vertical: 6),
                       ),
                       onPressed: () async {
                         await FlutterForegroundTask
-                            .openIgnoreBatteryOptimizationSettings();
+                            .requestNotificationPermission();
+                        await _checkSystemPermissions();
                       },
-                      icon: const Icon(Icons.open_in_new, size: 16),
-                      label: Text(
-                        provider.tr('settings_open_system_settings'),
+                      child: Text(
+                        provider.tr('permission_inactive'),
                         style: const TextStyle(fontSize: 11),
                       ),
                     ),
                   ),
                 ],
-              ),
+                const Divider(height: 1),
+                ListTile(
+                  leading: const Icon(Icons.ring_volume_outlined),
+                  title: Text(provider.tr('settings_test_notification')),
+                  subtitle: Text(
+                    provider.tr('settings_test_notification_desc'),
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  trailing: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                    ),
+                    onPressed: () async {
+                      await NotificationService().showTestNotification();
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              provider.tr('settings_test_notification_sent'),
+                            ),
+                            backgroundColor: AppTheme.statusOnline,
+                          ),
+                        );
+                      }
+                    },
+                    child: const Icon(Icons.send_rounded, size: 16),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
+
+          // ── 3. Arka Planda Çalışmayı Garantile ──
+          _buildSectionHeader(provider.tr('settings_battery_optimization')),
+          GlassCard(
+            child: Column(
+              children: [
+                // Battery Optimization ListTile (fixed wrapping)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _isIgnoringBattery
+                            ? Icons.battery_charging_full_rounded
+                            : Icons.battery_alert_rounded,
+                        color: _isIgnoringBattery
+                            ? AppTheme.statusOnline
+                            : AppTheme.statusWarning,
+                        size: 24,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              provider.tr('settings_battery_ignore'),
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              provider.tr('settings_battery_ignore_desc'),
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                color: AppTheme.darkTextMuted,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      if (_isIgnoringBattery)
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 9, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: AppTheme.statusOnline
+                                .withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppTheme.statusOnline
+                                  .withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: Text(
+                            provider.tr('settings_battery_status_unrestricted'),
+                            style: const TextStyle(
+                              color: AppTheme.statusOnline,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        )
+                      else
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                          ),
+                          onPressed: () async {
+                            await FlutterForegroundTask
+                                .requestIgnoreBatteryOptimization();
+                            await Future.delayed(
+                                const Duration(milliseconds: 800));
+                            await _checkSystemPermissions();
+                          },
+                          child: Text(
+                            provider.tr('settings_battery_status_restricted'),
+                            style: const TextStyle(fontSize: 11),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+
+                // Auto-start ListTile (fixed wrapping)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 12),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.settings_suggest_outlined,
+                        size: 24,
+                        color: AppTheme.primaryTeal,
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              provider.tr('settings_autostart_title'),
+                              style: const TextStyle(
+                                fontSize: 13.5,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              provider.tr('settings_autostart_desc'),
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                color: AppTheme.darkTextMuted,
+                              ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 8),
+                        ),
+                        onPressed: () async {
+                          await FlutterForegroundTask
+                              .openIgnoreBatteryOptimizationSettings();
+                        },
+                        icon: const Icon(Icons.open_in_new, size: 14),
+                        label: Text(
+                          provider.tr('settings_open_system_settings'),
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
 
           // ── 4. Güvenlik & Kapatma Ayarları ──
           _buildSectionHeader(provider.tr('settings_security_shutdown')),
           GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: SwitchListTile(
-                value: provider.allowPcCancel,
-                title: Text(provider.tr('settings_allow_pc_cancel')),
-                subtitle: Text(provider.tr('settings_allow_pc_cancel_desc'),
-                    style: const TextStyle(fontSize: 12)),
-                secondary: const Icon(Icons.lock_clock_outlined),
-                activeThumbColor: provider.accentColor,
-                onChanged: (val) => provider.setAllowPcCancel(val),
+            child: SwitchListTile(
+              value: provider.allowPcCancel,
+              title: Text(provider.tr('settings_allow_pc_cancel')),
+              subtitle: Text(
+                provider.tr('settings_allow_pc_cancel_desc'),
+                style: const TextStyle(fontSize: 12),
               ),
+              secondary: const Icon(Icons.lock_clock_outlined),
+              activeThumbColor: provider.accentColor,
+              onChanged: (val) => provider.setAllowPcCancel(val),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
-          // ── 4. Dil Seçimi Bölümü ──
+          // ── 5. Dil Seçimi (Single-line ListTile with Dialog) ──
           _buildSectionHeader(provider.tr('settings_language')),
           GlassCard(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Column(
-                children: AppTranslations.supportedLocales.map((loc) {
-                  final code = loc['code']!;
-                  final isSelected = provider.currentLanguage == code;
-
-                  return ListTile(
-                    leading: Text(
-                      loc['flag']!,
-                      style: const TextStyle(fontSize: 24),
-                    ),
-                    title: Text(
-                      loc['name']!,
-                      style: TextStyle(
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.normal,
-                        color: isSelected ? provider.accentColor : null,
-                      ),
-                    ),
-                    trailing: isSelected
-                        ? Icon(Icons.check_circle, color: provider.accentColor)
-                        : null,
-                    onTap: () => provider.setLanguage(code),
-                  );
-                }).toList(),
-              ),
+            child: Builder(
+              builder: (ctx) {
+                final currentLocale = AppTranslations.supportedLocales
+                    .firstWhere(
+                      (l) => l['code'] == provider.currentLanguage,
+                      orElse: () => AppTranslations.supportedLocales.first,
+                    );
+                return ListTile(
+                  leading: Text(
+                    currentLocale['flag']!,
+                    style: const TextStyle(fontSize: 24),
+                  ),
+                  title: Text(
+                    currentLocale['name']!,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Text(provider.tr('settings_language')),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => _showLanguageDialog(context, provider),
+                );
+              },
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
-          // ── 5. Supabase Yapılandırması ──
-          _buildSectionHeader(provider.tr('settings_supabase')),
+          // ── 6. Hesap ve Güvenlik (Account & Security) ──
+          _buildSectionHeader('Hesap & Güvenlik'),
           GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextField(
-                    controller: _urlController,
-                    decoration: InputDecoration(
-                      labelText: provider.tr('supabase_url'),
-                      prefixIcon: const Icon(Icons.link),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  TextField(
-                    controller: _keyController,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                      labelText: provider.tr('supabase_key'),
-                      prefixIcon: const Icon(Icons.key),
-                    ),
-                  ),
-                  const SizedBox(height: 18),
                   Row(
                     children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _resetDefaults,
-                          child: Text(provider.tr('reset_defaults')),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: provider.accentColor.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
                         ),
+                        child: Icon(Icons.shield_outlined, color: provider.accentColor, size: 22),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 14),
                       Expanded(
-                        child: ElevatedButton(
-                          onPressed: _isSaving ? null : _saveConfig,
-                          child: _isSaving
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white),
-                                )
-                              : Text(provider.tr('btn_save')),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _userEmail.isNotEmpty ? _userEmail : 'Giriş Yapıldı',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              _urlController.text.isNotEmpty
+                                  ? _urlController.text
+                                  : 'Supabase Cloud',
+                              style: const TextStyle(fontSize: 11.5, color: AppTheme.darkTextMuted),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 14),
+                  const Divider(),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      const Icon(Icons.lock_outline, size: 16, color: AppTheme.statusOnline),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'RLS & Şifrelenmiş Depolama Aktif',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.statusOffline,
+                        side: BorderSide(color: AppTheme.statusOffline.withValues(alpha: 0.5)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      icon: const Icon(Icons.logout_rounded, size: 18),
+                      label: const Text('Oturumu Kapat', style: TextStyle(fontWeight: FontWeight.bold)),
+                      onPressed: _handleSignOut,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
 
-          // ── 6. Açık Kaynak ve Ücretsiz Bildirim Kartı ──
+          // ── 7. Açık Kaynak ve Ücretsiz Bildirim Kartı ──
           GlassCard(
             color: provider.accentColor.withValues(alpha: 0.08),
             elevation: 0,
@@ -719,7 +639,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 16),
 
-          // ── 7. Geliştirici İmzası & GitHub Profili ──
+          // ── 8. Geliştirici İmzası & GitHub Profili ──
           Padding(
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Center(
@@ -789,7 +709,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'AlertRox v1.3.0 • Open Source Security',
+                    'AlertRox v1.4.0 • Open Source Security',
                     style: TextStyle(
                       fontSize: 11,
                       color: Theme.of(context)
@@ -814,7 +734,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Text(
         title,
         style: const TextStyle(
-          fontSize: 15,
+          fontSize: 14,
           fontWeight: FontWeight.bold,
           color: AppTheme.darkTextMuted,
         ),

@@ -2,6 +2,14 @@
 .env
 *.env
 .env.local
+.env.*.local
+
+# Keystore & Android İmzalama Anahtarları (KRİTİK!)
+key.properties
+*.keystore
+*.jks
+upload-keystore.jks
+google-services.json
 
 # Python
 __pycache__/
@@ -29,9 +37,15 @@ bin/
 # Kivy
 .kivy/
 
-# Flutter
+# Flutter / Dart
 app/.dart_tool/
+.dart_tool/
 app/build/
+build/
 app/.flutter-plugins
 app/.flutter-plugins-dependencies
 app/.packages
+app/android/.gradle/
+.gradle/
+app/android/local.properties
+local.properties

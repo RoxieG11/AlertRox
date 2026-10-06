@@ -5,7 +5,8 @@ import '../services/supabase_service.dart';
 import '../constants/theme.dart';
 
 class ChatScreen extends StatefulWidget {
-  const ChatScreen({super.key});
+  final bool isActive;
+  const ChatScreen({super.key, this.isActive = true});
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -16,6 +17,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isSending = false;
   bool _isClearing = false;
+  List<Map<String, dynamic>> _cachedMessages = const [];
 
   Future<void> _clearChat(String targetId, AppProvider provider) async {
     final confirmed = await showDialog<bool>(
@@ -177,14 +179,21 @@ class _ChatScreenState extends State<ChatScreen> {
           // Messages Stream List
           Expanded(
             child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: SupabaseService().streamMessages(targetId),
+              initialData: _cachedMessages,
+              stream: widget.isActive
+                  ? SupabaseService().streamMessages(targetId)
+                  : null,
               builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  _cachedMessages = snapshot.data!;
+                }
                 if (snapshot.connectionState == ConnectionState.waiting &&
-                    !snapshot.hasData) {
+                    !snapshot.hasData &&
+                    _cachedMessages.isEmpty) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                final messages = snapshot.data ?? [];
+                final messages = snapshot.data ?? _cachedMessages;
                 if (messages.isEmpty) {
                   return Center(
                     child: Column(

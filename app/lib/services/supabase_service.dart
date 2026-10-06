@@ -1,68 +1,132 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class SupabaseService {
   static final SupabaseService _instance = SupabaseService._internal();
   factory SupabaseService() => _instance;
   SupabaseService._internal();
 
-  // Default credentials
-  static const String defaultUrl = 'https://ezyrqwqzabkffqpsmfew.supabase.co';
-  static const String defaultKey =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6eXJxd3F6YWJrZmZxcHNtZmV3Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MDI0OTMyOSwiZXhwIjoyMTA1ODI1MzI5fQ.EC10vCeuV37X4jv3PhaFz9i0sBSvZNZqpPwErE2RnrE';
+  static const _secureStorage = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
-  static const String keyPrefUrl = 'supabase_url';
-  static const String keyPrefKey = 'supabase_key';
+  static const String keyUrl = 'supabase_url';
+  static const String keyAnonKey = 'supabase_anon_key';
+  static const String keyEmail = 'supabase_user_email';
+  static const String keyAccessToken = 'supabase_access_token';
+  static const String keyRefreshToken = 'supabase_refresh_token';
 
   bool _isInitialized = false;
   bool get isInitialized => _isInitialized;
 
   SupabaseClient get client => Supabase.instance.client;
 
-  Future<bool> initialize({String? customUrl, String? customKey}) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final url = customUrl ?? prefs.getString(keyPrefUrl) ?? defaultUrl;
-      final key = customKey ?? prefs.getString(keyPrefKey) ?? defaultKey;
+  User? get currentUser =>
+      _isInitialized ? client.auth.currentUser : null;
 
-      if (_isInitialized) {
+  bool get isAuthenticated =>
+      _isInitialized && client.auth.currentSession != null;
+
+  Future<bool> initialize() async {
+    try {
+      final url = await _secureStorage.read(key: keyUrl);
+      final anonKey = await _secureStorage.read(key: keyAnonKey);
+
+      if (url == null ||
+          url.trim().isEmpty ||
+          anonKey == null ||
+          anonKey.trim().isEmpty) {
+        return false;
+      }
+
+      if (!_isInitialized) {
+        await Supabase.initialize(
+          url: url.trim(),
+          anonKey: anonKey.trim(),
+          debug: kDebugMode,
+        );
+        _isInitialized = true;
+      }
+
+      // Sync tokens to secure storage if session exists
+      final session = client.auth.currentSession;
+      if (session != null) {
+        await _secureStorage.write(
+            key: keyAccessToken, value: session.accessToken);
+        if (session.refreshToken != null) {
+          await _secureStorage.write(
+              key: keyRefreshToken, value: session.refreshToken);
+        }
         return true;
       }
 
-      await Supabase.initialize(
-        url: url.trim(),
-        anonKey: key.trim(),
-        debug: kDebugMode,
-      );
-
-      _isInitialized = true;
-      return true;
+      return false;
     } catch (e) {
       debugPrint('Supabase init error: $e');
       return false;
     }
   }
 
-  Future<void> saveCredentials(String url, String key) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(keyPrefUrl, url.trim());
-    await prefs.setString(keyPrefKey, key.trim());
+  Future<AuthResponse> signIn({
+    required String url,
+    required String anonKey,
+    required String email,
+    required String password,
+  }) async {
+    final cleanUrl = url.trim();
+    final cleanKey = anonKey.trim();
+
+    if (!_isInitialized) {
+      await Supabase.initialize(
+        url: cleanUrl,
+        anonKey: cleanKey,
+        debug: kDebugMode,
+      );
+      _isInitialized = true;
+    }
+
+    final response = await client.auth.signInWithPassword(
+      email: email.trim(),
+      password: password,
+    );
+
+    if (response.session != null) {
+      await _secureStorage.write(key: keyUrl, value: cleanUrl);
+      await _secureStorage.write(key: keyAnonKey, value: cleanKey);
+      await _secureStorage.write(key: keyEmail, value: email.trim());
+      await _secureStorage.write(
+          key: keyAccessToken, value: response.session!.accessToken);
+      if (response.session!.refreshToken != null) {
+        await _secureStorage.write(
+            key: keyRefreshToken, value: response.session!.refreshToken);
+      }
+    }
+
+    return response;
   }
 
-  Future<Map<String, String>> getSavedCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
+  Future<void> signOut() async {
+    try {
+      if (_isInitialized) {
+        await client.auth.signOut();
+      }
+    } catch (_) {}
+
+    await _secureStorage.delete(key: keyAccessToken);
+    await _secureStorage.delete(key: keyRefreshToken);
+  }
+
+  Future<Map<String, String>> getSavedConfig() async {
+    final url = await _secureStorage.read(key: keyUrl);
+    final key = await _secureStorage.read(key: keyAnonKey);
+    final email = await _secureStorage.read(key: keyEmail);
     return {
-      'url': prefs.getString(keyPrefUrl) ?? defaultUrl,
-      'key': prefs.getString(keyPrefKey) ?? defaultKey,
+      'url': url ?? '',
+      'anon_key': key ?? '',
+      'email': email ?? '',
     };
-  }
-
-  Future<void> resetCredentials() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(keyPrefUrl);
-    await prefs.remove(keyPrefKey);
   }
 
   // Devices API
@@ -94,6 +158,7 @@ class SupabaseService {
       'command_type': commandType,
       'status': 'pending',
       'payload': payload ?? {},
+      'owner_id': currentUser?.id,
     });
   }
 
@@ -111,6 +176,7 @@ class SupabaseService {
       'device_id': deviceId,
       'sender': 'mobile',
       'text': text.trim(),
+      'owner_id': currentUser?.id,
     });
   }
 
@@ -152,9 +218,8 @@ class SupabaseService {
         filter = filter.eq('device_id', deviceId);
       }
 
-      final response = await filter
-          .order('created_at', ascending: false)
-          .limit(50);
+      final response =
+          await filter.order('created_at', ascending: false).limit(50);
       final List<Map<String, dynamic>> results = [];
 
       for (final cmd in response) {
@@ -165,21 +230,22 @@ class SupabaseService {
         final isImage = type == 'screenshot' || type == 'webcam';
         final isAudio = type == 'mic_record';
 
-        // Extract relative storage path and generate fresh signed URL
+        // Extract relative storage path and generate fresh 600-second signed URL
         String finalUrl = rawUrl;
         if (rawUrl.contains('/alertrox-files/')) {
           try {
             final pathPart = rawUrl.split('/alertrox-files/')[1].split('?')[0];
             final freshUrl = await client.storage
                 .from('alertrox-files')
-                .createSignedUrl(pathPart, 86400);
+                .createSignedUrl(pathPart, 600);
             if (freshUrl.isNotEmpty) finalUrl = freshUrl;
           } catch (_) {}
         }
 
         results.add({
           'id': cmd['id'],
-          'name': '$type — ${_formatMediaTime(cmd['executed_at'] ?? cmd['created_at'])}',
+          'name':
+              '$type — ${_formatMediaTime(cmd['executed_at'] ?? cmd['created_at'])}',
           'type': type,
           'created_at': cmd['executed_at'] ?? cmd['created_at'],
           'url': finalUrl,

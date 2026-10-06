@@ -3,6 +3,9 @@ package com.roxie.alertrox.app
 import android.appwidget.AppWidgetManager
 import android.content.Context
 import android.content.SharedPreferences
+import android.content.res.Configuration
+import android.graphics.*
+import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.RemoteViews
@@ -30,23 +33,78 @@ class AlertRoxWidgetProvider : HomeWidgetProvider() {
                     setTextViewText(R.id.widget_status, status)
                     setTextViewText(R.id.widget_last_seen, lastSeen)
 
-                    val statusColor = if (isOnline) 0xFF10B981.toInt() else 0xFFEF4444.toInt()
+                    // Widget appearance settings from Flutter
+                    val widgetMode = widgetData.getString("widget_mode", "dark") ?: "dark"
+                    val widgetGlass = widgetData.getBoolean("widget_glass", true)
+                    val widgetOpacity = try {
+                        widgetData.getInt("widget_opacity", 85)
+                    } catch (_: Exception) {
+                        try { widgetData.getLong("widget_opacity", 85L).toInt() } catch (_: Exception) { 85 }
+                    }
+                    val accentColorLong = try {
+                        widgetData.getLong("widget_accent", 0xFF00F0FFL)
+                    } catch (_: Exception) {
+                        try { widgetData.getInt("widget_accent", 0xFF00F0FF.toInt()).toLong() } catch (_: Exception) { 0xFF00F0FFL }
+                    }
+                    val secondaryColorLong = try {
+                        widgetData.getLong("widget_secondary", 0xFF10B981L)
+                    } catch (_: Exception) {
+                        try { widgetData.getInt("widget_secondary", 0xFF10B981.toInt()).toLong() } catch (_: Exception) { 0xFF10B981L }
+                    }
+
+                    val accentColor = accentColorLong.toInt()
+                    val secondaryColor = secondaryColorLong.toInt()
+
+                    // Determine effective light/dark mode
+                    val isSystemDark = (context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
+                    val isLight = when (widgetMode) {
+                        "light" -> true
+                        "system" -> !isSystemDark
+                        else -> false
+                    }
+
+                    // Status indicator color
+                    val statusColor = if (isOnline) {
+                        if (widgetGlass) accentColor else 0xFF10B981.toInt()
+                    } else {
+                        0xFFEF4444.toInt()
+                    }
                     setTextColor(R.id.widget_status, statusColor)
 
-                    val widgetTheme = widgetData.getString("widget_theme", "dark") ?: "dark"
-                    val isLight = widgetTheme == "light"
-
+                    // Text colors based on mode
                     if (isLight) {
-                        setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_bg_light)
                         setTextColor(R.id.widget_device_name, 0xFF0F172A.toInt())
-                        setTextColor(R.id.widget_brand, 0xFF64748B.toInt())
-                        setTextColor(R.id.widget_last_seen, 0xFF475569.toInt())
+                        setTextColor(R.id.widget_brand, 0xFF475569.toInt())
+                        setTextColor(R.id.widget_last_seen, 0xFF64748B.toInt())
+                        setInt(R.id.widget_divider, "setBackgroundColor", 0x33000000)
                     } else {
-                        setInt(R.id.widget_root, "setBackgroundResource", R.drawable.widget_bg)
-                        setTextColor(R.id.widget_device_name, 0xFFF3F4F6.toInt())
-                        setTextColor(R.id.widget_brand, 0xFF9CA3AF.toInt())
-                        setTextColor(R.id.widget_last_seen, 0xFF9CA3AF.toInt())
+                        setTextColor(R.id.widget_device_name, 0xFFF8FAFC.toInt())
+                        setTextColor(R.id.widget_brand, 0xFF94A3B8.toInt())
+                        setTextColor(R.id.widget_last_seen, 0xFF94A3B8.toInt())
+                        setInt(R.id.widget_divider, "setBackgroundColor", 0x33FFFFFF)
                     }
+
+                    // Get widget dimensions from AppWidgetOptions
+                    val options: Bundle? = appWidgetManager.getAppWidgetOptions(widgetId)
+                    val minWidthDp = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH) ?: 200
+                    val minHeightDp = options?.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT) ?: 100
+
+                    val density = context.resources.displayMetrics.density
+                    val widthPx = (minWidthDp * density).toInt().coerceIn(300, 800)
+                    val heightPx = (minHeightDp * density).toInt().coerceIn(150, 450)
+
+                    // Draw dynamic rounded bitmap background with glass/gradient
+                    val bgBitmap = createWidgetBackgroundBitmap(
+                        width = widthPx,
+                        height = heightPx,
+                        isLight = isLight,
+                        isGlass = widgetGlass,
+                        opacityPercent = widgetOpacity,
+                        accentColor = accentColor,
+                        secondaryColor = secondaryColor,
+                        density = density
+                    )
+                    setImageViewBitmap(R.id.widget_background_image, bgBitmap)
 
                     // Shutdown countdown alert
                     if (isShuttingDown && shutdownCountdown.isNotEmpty()) {
@@ -61,12 +119,101 @@ class AlertRoxWidgetProvider : HomeWidgetProvider() {
                         context,
                         MainActivity::class.java
                     )
-                    setOnClickPendingIntent(R.id.widget_root, pendingIntent)
+                    setOnClickPendingIntent(R.id.widget_container, pendingIntent)
                 }
                 appWidgetManager.updateAppWidget(widgetId, views)
             } catch (e: Exception) {
                 Log.e("AlertRoxWidget", "Error updating widget ID $widgetId: ${e.message}", e)
             }
         }
+    }
+
+    private fun createWidgetBackgroundBitmap(
+        width: Int,
+        height: Int,
+        isLight: Boolean,
+        isGlass: Boolean,
+        opacityPercent: Int,
+        accentColor: Int,
+        secondaryColor: Int,
+        density: Float
+    ): Bitmap {
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val cornerRadius = 24f * density
+        val rect = RectF(2f, 2f, width - 2f, height - 2f)
+
+        val alphaFactor = (opacityPercent.coerceIn(10, 100) / 100f)
+
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        if (isGlass) {
+            // Base fill with frosted tint
+            val baseColor = if (isLight) {
+                Color.argb((210 * alphaFactor).toInt(), 255, 255, 255)
+            } else {
+                Color.argb((180 * alphaFactor).toInt(), 15, 23, 42)
+            }
+            paint.style = Paint.Style.FILL
+            paint.color = baseColor
+            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
+
+            // Subtle gradient from accent / secondary colors on top
+            val accentAlpha = (if (isLight) 35 else 45) * alphaFactor
+            val secondaryAlpha = (if (isLight) 25 else 35) * alphaFactor
+            val topColor = Color.argb(
+                accentAlpha.toInt(),
+                Color.red(accentColor),
+                Color.green(accentColor),
+                Color.blue(accentColor)
+            )
+            val bottomColor = Color.argb(
+                secondaryAlpha.toInt(),
+                Color.red(secondaryColor),
+                Color.green(secondaryColor),
+                Color.blue(secondaryColor)
+            )
+
+            val gradient = LinearGradient(
+                0f, 0f, width.toFloat(), height.toFloat(),
+                topColor, bottomColor, Shader.TileMode.CLAMP
+            )
+            paint.shader = gradient
+            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
+            paint.shader = null
+
+            // Thin border
+            val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = 1.2f * density
+                val borderAlpha = (if (isLight) 120 else 80) * alphaFactor
+                color = Color.argb(
+                    borderAlpha.toInt(),
+                    if (isLight) 255 else Color.red(accentColor),
+                    if (isLight) 255 else Color.green(accentColor),
+                    if (isLight) 255 else Color.blue(accentColor)
+                )
+            }
+            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
+        } else {
+            // Solid style
+            val baseColor = if (isLight) {
+                Color.argb((255 * alphaFactor).toInt(), 255, 255, 255)
+            } else {
+                Color.argb((255 * alphaFactor).toInt(), 17, 24, 39)
+            }
+            paint.style = Paint.Style.FILL
+            paint.color = baseColor
+            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
+
+            val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = 1.2f * density
+                color = if (isLight) 0xFFCBD5E1.toInt() else 0xFF1F293D.toInt()
+            }
+            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
+        }
+
+        return bitmap
     }
 }

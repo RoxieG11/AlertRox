@@ -2,6 +2,8 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'supabase_service.dart';
@@ -18,15 +20,25 @@ class WatchdogTaskHandler extends TaskHandler {
   @override
   Future<void> onStart(DateTime timestamp, TaskStarter starter) async {
     try {
-      // 1. Initialize Supabase in background isolate using stored or default credentials
-      final url =
-          await FlutterForegroundTask.getData<String>(key: 'supabase_url') ??
-              SupabaseService.defaultUrl;
-      final key =
-          await FlutterForegroundTask.getData<String>(key: 'supabase_key') ??
-              SupabaseService.defaultKey;
+      // 1. Initialize Supabase in background isolate using encrypted storage
+      const secureStorage = FlutterSecureStorage(
+        aOptions: AndroidOptions(encryptedSharedPreferences: true),
+      );
+      final url = await secureStorage.read(key: SupabaseService.keyUrl);
+      final anonKey = await secureStorage.read(key: SupabaseService.keyAnonKey);
+      final token = await secureStorage.read(key: SupabaseService.keyAccessToken);
 
-      _supabaseClient = SupabaseClient(url.trim(), key.trim());
+      if (url != null && url.isNotEmpty && anonKey != null && anonKey.isNotEmpty) {
+        final headers = <String, String>{};
+        if (token != null && token.isNotEmpty) {
+          headers['Authorization'] = 'Bearer $token';
+        }
+        _supabaseClient = SupabaseClient(
+          url.trim(),
+          anonKey.trim(),
+          headers: headers,
+        );
+      }
 
       // 2. Initialize local notifications plugin in background isolate
       _notificationsPlugin = FlutterLocalNotificationsPlugin();
@@ -61,11 +73,32 @@ class WatchdogTaskHandler extends TaskHandler {
   @override
   void onRepeatEvent(DateTime timestamp) async {
     try {
+      if (_supabaseClient == null) {
+        const secureStorage = FlutterSecureStorage(
+          aOptions: AndroidOptions(encryptedSharedPreferences: true),
+        );
+        final url = await secureStorage.read(key: SupabaseService.keyUrl);
+        final anonKey = await secureStorage.read(key: SupabaseService.keyAnonKey);
+        final token = await secureStorage.read(key: SupabaseService.keyAccessToken);
+
+        if (url != null && url.isNotEmpty && anonKey != null && anonKey.isNotEmpty) {
+          final headers = <String, String>{};
+          if (token != null && token.isNotEmpty) {
+            headers['Authorization'] = 'Bearer $token';
+          }
+          _supabaseClient = SupabaseClient(
+            url.trim(),
+            anonKey.trim(),
+            headers: headers,
+          );
+        }
+      }
+
       if (_supabaseClient == null) return;
 
       final response = await _supabaseClient!
           .from('devices')
-          .select()
+          .select('id, device_id, name, status, last_heartbeat, last_boot')
           .order('last_heartbeat', ascending: false);
 
       final devices = List<Map<String, dynamic>>.from(response);
@@ -116,6 +149,80 @@ class WatchdogTaskHandler extends TaskHandler {
 
         await prefs.setBool(prevOnlineKey, isOnlineNow);
       }
+
+      // Update Home Screen Widget in background isolate
+      try {
+        final selectedDevId = prefs.getString('selected_device_id');
+        Map<String, dynamic> targetDev = devices.first;
+        if (selectedDevId != null) {
+          targetDev = devices.firstWhere(
+            (d) => (d['device_id'] ?? d['id']).toString() == selectedDevId,
+            orElse: () => devices.first,
+          );
+        }
+
+        final isDevOnline = _isDeviceOnline(targetDev);
+        final devName =
+            (targetDev['name'] ?? targetDev['device_name'] ?? 'AlertRox PC')
+                .toString();
+        final langCode = prefs.getString('app_language') ?? 'tr';
+
+        String lastSeenMinute = '--:--';
+        if (targetDev['last_heartbeat'] != null) {
+          try {
+            final dt = DateTime.parse(targetDev['last_heartbeat']).toLocal();
+            lastSeenMinute =
+                '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+          } catch (_) {}
+        }
+
+        final lastWidgetOnline = prefs.getBool('widget_cached_online');
+        final lastWidgetMinute = prefs.getString('widget_cached_minute');
+        final lastWidgetName = prefs.getString('widget_cached_name');
+
+        final widgetNeedsUpdate = lastWidgetOnline != isDevOnline ||
+            lastWidgetMinute != lastSeenMinute ||
+            lastWidgetName != devName;
+
+        if (widgetNeedsUpdate) {
+          final statusOnlineText = langCode == 'tr' ? 'ÇEVRİMİÇİ' : 'ONLINE';
+          final statusOfflineText =
+              langCode == 'tr' ? 'ÇEVRİMDIŞI' : 'OFFLINE';
+          final status =
+              isDevOnline ? '● $statusOnlineText' : '● $statusOfflineText';
+          final lastSeenLabel = langCode == 'tr' ? 'Son nabız' : 'Last seen';
+
+          final widgetMode = prefs.getString('widget_mode') ?? 'dark';
+          final widgetGlass = prefs.getBool('widget_glass') ?? true;
+          final widgetOpacity = prefs.getInt('widget_opacity') ?? 85;
+          final widgetAccent = prefs.getInt('widget_accent') ?? 0xFF00F0FF;
+          final widgetSecondary = prefs.getInt('widget_secondary') ?? 0xFF10B981;
+
+          await HomeWidget.saveWidgetData<String>('device_name', devName);
+          await HomeWidget.saveWidgetData<String>('device_status', status);
+          await HomeWidget.saveWidgetData<String>(
+              'last_seen', '$lastSeenLabel: $lastSeenMinute');
+          await HomeWidget.saveWidgetData<bool>('is_online', isDevOnline);
+          await HomeWidget.saveWidgetData<String>('widget_theme', widgetMode);
+          await HomeWidget.saveWidgetData<String>('widget_mode', widgetMode);
+          await HomeWidget.saveWidgetData<bool>('widget_glass', widgetGlass);
+          await HomeWidget.saveWidgetData<int>('widget_opacity', widgetOpacity);
+          await HomeWidget.saveWidgetData<int>('widget_accent', widgetAccent);
+          await HomeWidget.saveWidgetData<int>(
+              'widget_secondary', widgetSecondary);
+
+          await HomeWidget.updateWidget(
+            name: 'AlertRoxWidgetProvider',
+            androidName: 'AlertRoxWidgetProvider',
+            qualifiedAndroidName:
+                'com.roxie.alertrox.app.AlertRoxWidgetProvider',
+          );
+
+          await prefs.setBool('widget_cached_online', isDevOnline);
+          await prefs.setString('widget_cached_minute', lastSeenMinute);
+          await prefs.setString('widget_cached_name', devName);
+        }
+      } catch (_) {}
     } catch (_) {
       // Gracefully catch network / socket / format errors so service never crashes
     }
@@ -182,7 +289,7 @@ class AlertRoxForegroundService {
       ),
       iosNotificationOptions: const IOSNotificationOptions(),
       foregroundTaskOptions: ForegroundTaskOptions(
-        eventAction: ForegroundTaskEventAction.repeat(5000),
+        eventAction: ForegroundTaskEventAction.repeat(10000),
         autoRunOnBoot: true,
         allowWakeLock: true,
         allowWifiLock: true,
@@ -193,27 +300,16 @@ class AlertRoxForegroundService {
   static Future<bool> start() async {
     if (kIsWeb || !Platform.isAndroid) return false;
     try {
-      // 1. Pass Supabase credentials to background isolate via saveData (without logging secrets)
-      final creds = await SupabaseService().getSavedCredentials();
-      await FlutterForegroundTask.saveData(
-        key: 'supabase_url',
-        value: creds['url'] ?? SupabaseService.defaultUrl,
-      );
-      await FlutterForegroundTask.saveData(
-        key: 'supabase_key',
-        value: creds['key'] ?? SupabaseService.defaultKey,
-      );
-
-      // 2. Check and request notification permissions
+      // 1. Check and request notification permissions
       final perm = await FlutterForegroundTask.checkNotificationPermission();
       if (perm != NotificationPermission.granted) {
         await FlutterForegroundTask.requestNotificationPermission();
       }
 
-      // 3. Do not re-start if service is already running
+      // 2. Do not re-start if service is already running
       if (await FlutterForegroundTask.isRunningService) return true;
 
-      // 4. Start foreground service with specialUse type for Android 14/15 compatibility
+      // 3. Start foreground service with specialUse type for Android 14/15 compatibility
       final result = await FlutterForegroundTask.startService(
         serviceId: 256,
         notificationTitle: 'AlertRox Gözcü Aktif',
@@ -250,11 +346,5 @@ class AlertRoxForegroundService {
     } catch (_) {
       return false;
     }
-  }
-
-  static Future<void> syncCredentials(String url, String key) async {
-    if (kIsWeb || !Platform.isAndroid) return;
-    await FlutterForegroundTask.saveData(key: 'supabase_url', value: url);
-    await FlutterForegroundTask.saveData(key: 'supabase_key', value: key);
   }
 }
