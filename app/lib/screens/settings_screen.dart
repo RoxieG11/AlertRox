@@ -74,8 +74,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Oturumu Kapat'),
-        content: const Text('Hesabınızdan çıkış yapmak istediğinize emin misiniz?'),
+        title: Text(provider.tr('settings_sign_out')),
+        content: Text(provider.tr('settings_sign_out_confirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -84,7 +84,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppTheme.statusOffline),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Çıkış Yap', style: TextStyle(color: Colors.white)),
+            child: Text(provider.tr('settings_sign_out'), style: const TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -498,7 +498,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 20),
 
           // ── 6. Hesap ve Güvenlik (Account & Security) ──
-          _buildSectionHeader('Hesap & Güvenlik'),
+          _buildSectionHeader(provider.tr('settings_account_security')),
           GlassCard(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -521,7 +521,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              _userEmail.isNotEmpty ? _userEmail : 'Giriş Yapıldı',
+                              _userEmail.isNotEmpty ? _userEmail : provider.tr('settings_logged_in'),
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                             ),
                             const SizedBox(height: 2),
@@ -547,7 +547,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
-                          'RLS & Şifrelenmiş Depolama Aktif',
+                          provider.tr('settings_security_rls_active'),
                           style: TextStyle(
                             fontSize: 12,
                             color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
@@ -567,7 +567,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                       icon: const Icon(Icons.logout_rounded, size: 18),
-                      label: const Text('Oturumu Kapat', style: TextStyle(fontWeight: FontWeight.bold)),
+                      label: Text(provider.tr('settings_sign_out'), style: const TextStyle(fontWeight: FontWeight.bold)),
                       onPressed: _handleSignOut,
                     ),
                   ),
@@ -709,7 +709,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'AlertRox v1.4.0 • Open Source Security',
+                    'AlertRox v1.4.1 • Open Source Security',
                     style: TextStyle(
                       fontSize: 11,
                       color: Theme.of(context)

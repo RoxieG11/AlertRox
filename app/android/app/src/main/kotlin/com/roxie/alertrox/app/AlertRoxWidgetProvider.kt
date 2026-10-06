@@ -143,75 +143,86 @@ class AlertRoxWidgetProvider : HomeWidgetProvider() {
         val cornerRadius = 24f * density
         val rect = RectF(2f, 2f, width - 2f, height - 2f)
 
-        val alphaFactor = (opacityPercent.coerceIn(10, 100) / 100f)
+        val alphaFactor = (opacityPercent.coerceIn(0, 100) / 100f)
 
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
 
         if (isGlass) {
-            // Base fill with frosted tint
+            // Base fill with frosted tint. At 100% opacity, alpha is 255 (fully solid, no transparency). At 0%, alpha is 0.
+            val baseAlpha = (255 * alphaFactor).toInt().coerceIn(0, 255)
             val baseColor = if (isLight) {
-                Color.argb((210 * alphaFactor).toInt(), 255, 255, 255)
+                Color.argb(baseAlpha, 255, 255, 255)
             } else {
-                Color.argb((180 * alphaFactor).toInt(), 15, 23, 42)
+                Color.argb(baseAlpha, 15, 23, 42)
             }
             paint.style = Paint.Style.FILL
             paint.color = baseColor
             canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
 
-            // Subtle gradient from accent / secondary colors on top
-            val accentAlpha = (if (isLight) 35 else 45) * alphaFactor
-            val secondaryAlpha = (if (isLight) 25 else 35) * alphaFactor
-            val topColor = Color.argb(
-                accentAlpha.toInt(),
-                Color.red(accentColor),
-                Color.green(accentColor),
-                Color.blue(accentColor)
-            )
-            val bottomColor = Color.argb(
-                secondaryAlpha.toInt(),
-                Color.red(secondaryColor),
-                Color.green(secondaryColor),
-                Color.blue(secondaryColor)
-            )
-
-            val gradient = LinearGradient(
-                0f, 0f, width.toFloat(), height.toFloat(),
-                topColor, bottomColor, Shader.TileMode.CLAMP
-            )
-            paint.shader = gradient
-            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
-            paint.shader = null
-
-            // Thin border
-            val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                style = Paint.Style.STROKE
-                strokeWidth = 1.2f * density
-                val borderAlpha = (if (isLight) 120 else 80) * alphaFactor
-                color = Color.argb(
-                    borderAlpha.toInt(),
-                    if (isLight) 255 else Color.red(accentColor),
-                    if (isLight) 255 else Color.green(accentColor),
-                    if (isLight) 255 else Color.blue(accentColor)
+            if (alphaFactor > 0.02f) {
+                // Subtle gradient from accent / secondary colors on top
+                val accentAlpha = ((if (isLight) 40 else 50) * alphaFactor).toInt().coerceIn(0, 255)
+                val secondaryAlpha = ((if (isLight) 30 else 40) * alphaFactor).toInt().coerceIn(0, 255)
+                val topColor = Color.argb(
+                    accentAlpha,
+                    Color.red(accentColor),
+                    Color.green(accentColor),
+                    Color.blue(accentColor)
                 )
+                val bottomColor = Color.argb(
+                    secondaryAlpha,
+                    Color.red(secondaryColor),
+                    Color.green(secondaryColor),
+                    Color.blue(secondaryColor)
+                )
+
+                val gradient = LinearGradient(
+                    0f, 0f, width.toFloat(), height.toFloat(),
+                    topColor, bottomColor, Shader.TileMode.CLAMP
+                )
+                paint.shader = gradient
+                canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
+                paint.shader = null
+
+                // Thin border
+                val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = 1.2f * density
+                    val borderAlpha = ((if (isLight) 140 else 100) * alphaFactor).toInt().coerceIn(0, 255)
+                    color = Color.argb(
+                        borderAlpha,
+                        if (isLight) 255 else Color.red(accentColor),
+                        if (isLight) 255 else Color.green(accentColor),
+                        if (isLight) 255 else Color.blue(accentColor)
+                    )
+                }
+                canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
             }
-            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
         } else {
-            // Solid style
+            // Solid style. At 100% opacity, alpha is 255 (completely solid). At 0%, alpha is 0.
+            val baseAlpha = (255 * alphaFactor).toInt().coerceIn(0, 255)
             val baseColor = if (isLight) {
-                Color.argb((255 * alphaFactor).toInt(), 255, 255, 255)
+                Color.argb(baseAlpha, 255, 255, 255)
             } else {
-                Color.argb((255 * alphaFactor).toInt(), 17, 24, 39)
+                Color.argb(baseAlpha, 17, 24, 39)
             }
             paint.style = Paint.Style.FILL
             paint.color = baseColor
             canvas.drawRoundRect(rect, cornerRadius, cornerRadius, paint)
 
-            val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                style = Paint.Style.STROKE
-                strokeWidth = 1.2f * density
-                color = if (isLight) 0xFFCBD5E1.toInt() else 0xFF1F293D.toInt()
+            if (alphaFactor > 0.02f) {
+                val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = 1.2f * density
+                    val borderAlpha = (255 * alphaFactor).toInt().coerceIn(0, 255)
+                    color = if (isLight) {
+                        Color.argb(borderAlpha, 0xCB, 0xD5, 0xE1)
+                    } else {
+                        Color.argb(borderAlpha, 0x1F, 0x29, 0x3D)
+                    }
+                }
+                canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
             }
-            canvas.drawRoundRect(rect, cornerRadius, cornerRadius, strokePaint)
         }
 
         return bitmap

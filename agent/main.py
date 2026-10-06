@@ -143,14 +143,18 @@ def execute_command(client: AlertRoxClient, command: dict):
     client.update_command_status(cmd_id, "executing")
 
     # Sohbet penceresi
-    if cmd_type == "open_chat":
+    if cmd_type in ("open_chat", "chat"):
         global chat_window_instance
-        if not chat_window_instance:
-            chat_window_instance = AlertRoxChatWindow(client)
-        chat_window_instance.launch()
-        client.update_command_status(cmd_id, "completed")
-        client.log_event("chat_opened", "PC'de sohbet penceresi açıldı")
-        print("[AlertRox] 💬 PC Sohbet penceresi açıldı!")
+        try:
+            if not chat_window_instance:
+                chat_window_instance = AlertRoxChatWindow(client)
+            chat_window_instance.launch()
+            client.update_command_status(cmd_id, "completed")
+            client.log_event("chat_opened", "PC'de sohbet penceresi açıldı")
+            print("[AlertRox] 💬 PC Sohbet penceresi açıldı!")
+        except Exception as e:
+            print(f"[AlertRox] Sohbet penceresi açma hatası: {e}")
+            client.update_command_status(cmd_id, "failed", error_message=str(e))
         return
 
     # Kapatma komutu (delay doğrulaması: 5..86400)
@@ -193,7 +197,7 @@ def execute_command(client: AlertRoxClient, command: dict):
         return
 
     # Kapatmayı iptal etme
-    if cmd_type == "cancel_shutdown":
+    if cmd_type in ("cancel_shutdown", "shutdown_cancel"):
         if shutdown_window_instance and shutdown_window_instance.is_active:
             shutdown_window_instance.cancel()
         cancel_shutdown()

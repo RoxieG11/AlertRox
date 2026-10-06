@@ -32,8 +32,8 @@ class AppearanceScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Widget Modu (Dark / Light / System)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         provider.tr('widget_mode_title'),
@@ -42,33 +42,37 @@ class AppearanceScreen extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      SegmentedButton<String>(
-                        showSelectedIcon: false,
-                        style: const ButtonStyle(
-                          visualDensity: VisualDensity.compact,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<String>(
+                          showSelectedIcon: false,
+                          style: const ButtonStyle(
+                            visualDensity: VisualDensity.compact,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          segments: [
+                            ButtonSegment(
+                              value: 'dark',
+                              icon: const Icon(Icons.dark_mode, size: 16),
+                              label: Text(provider.tr('settings_widget_dark')),
+                            ),
+                            ButtonSegment(
+                              value: 'light',
+                              icon: const Icon(Icons.light_mode, size: 16),
+                              label: Text(provider.tr('settings_widget_light')),
+                            ),
+                            ButtonSegment(
+                              value: 'system',
+                              icon: const Icon(Icons.settings_suggest, size: 16),
+                              label: Text(provider.tr('theme_system')),
+                            ),
+                          ],
+                          selected: {provider.widgetMode},
+                          onSelectionChanged: (set) {
+                            provider.setWidgetMode(set.first);
+                          },
                         ),
-                        segments: [
-                          ButtonSegment(
-                            value: 'dark',
-                            icon: const Icon(Icons.dark_mode, size: 16),
-                            label: Text(provider.tr('settings_widget_dark')),
-                          ),
-                          ButtonSegment(
-                            value: 'light',
-                            icon: const Icon(Icons.light_mode, size: 16),
-                            label: Text(provider.tr('settings_widget_light')),
-                          ),
-                          ButtonSegment(
-                            value: 'system',
-                            icon: const Icon(Icons.settings_suggest, size: 16),
-                            label: Text(provider.tr('theme_system')),
-                          ),
-                        ],
-                        selected: {provider.widgetMode},
-                        onSelectionChanged: (set) {
-                          provider.setWidgetMode(set.first);
-                        },
                       ),
                     ],
                   ),
@@ -120,9 +124,9 @@ class AppearanceScreen extends StatelessWidget {
                   ),
                   Slider(
                     value: provider.widgetOpacity.toDouble(),
-                    min: 10,
+                    min: 0,
                     max: 100,
-                    divisions: 18,
+                    divisions: 20,
                     activeColor: provider.accentColor,
                     onChanged: (val) {
                       provider.setWidgetOpacity(val.round());
@@ -131,8 +135,8 @@ class AppearanceScreen extends StatelessWidget {
                   const Divider(height: 24),
 
                   // Widget Renk Modu
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         provider.tr('widget_colors_title'),
@@ -141,26 +145,26 @@ class AppearanceScreen extends StatelessWidget {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      SegmentedButton<String>(
-                        showSelectedIcon: false,
-                        style: const ButtonStyle(
-                          visualDensity: VisualDensity.compact,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<String>(
+                          showSelectedIcon: false,
+                          segments: [
+                            ButtonSegment(
+                              value: 'same_as_app',
+                              label: Text(provider.tr('widget_color_same_as_app')),
+                            ),
+                            ButtonSegment(
+                              value: 'custom',
+                              label: Text(provider.tr('widget_color_custom')),
+                            ),
+                          ],
+                          selected: {provider.widgetColorMode},
+                          onSelectionChanged: (set) {
+                            provider.setWidgetColorMode(set.first);
+                          },
                         ),
-                        segments: [
-                          ButtonSegment(
-                            value: 'same_as_app',
-                            label: Text(provider.tr('widget_color_same_as_app')),
-                          ),
-                          ButtonSegment(
-                            value: 'custom',
-                            label: Text(provider.tr('widget_color_custom')),
-                          ),
-                        ],
-                        selected: {provider.widgetColorMode},
-                        onSelectionChanged: (set) {
-                          provider.setWidgetColorMode(set.first);
-                        },
                       ),
                     ],
                   ),
@@ -240,43 +244,43 @@ class AppearanceScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Uygulama Tema Modu
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        provider.tr('theme_dark'),
+                        provider.tr('app_theme_mode_title'),
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      SegmentedButton<ThemeMode>(
-                        showSelectedIcon: false,
-                        style: const ButtonStyle(
-                          visualDensity: VisualDensity.compact,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: SegmentedButton<ThemeMode>(
+                          showSelectedIcon: false,
+                          segments: [
+                            ButtonSegment(
+                              value: ThemeMode.dark,
+                              icon: const Icon(Icons.dark_mode, size: 16),
+                              label: Text(provider.tr('settings_widget_dark')),
+                            ),
+                            ButtonSegment(
+                              value: ThemeMode.light,
+                              icon: const Icon(Icons.light_mode, size: 16),
+                              label: Text(provider.tr('settings_widget_light')),
+                            ),
+                            ButtonSegment(
+                              value: ThemeMode.system,
+                              icon: const Icon(Icons.settings_suggest, size: 16),
+                              label: Text(provider.tr('theme_system')),
+                            ),
+                          ],
+                          selected: {provider.themeMode},
+                          onSelectionChanged: (set) {
+                            provider.setThemeMode(set.first);
+                          },
                         ),
-                        segments: [
-                          ButtonSegment(
-                            value: ThemeMode.dark,
-                            icon: const Icon(Icons.dark_mode, size: 16),
-                            label: Text(provider.tr('settings_widget_dark')),
-                          ),
-                          ButtonSegment(
-                            value: ThemeMode.light,
-                            icon: const Icon(Icons.light_mode, size: 16),
-                            label: Text(provider.tr('settings_widget_light')),
-                          ),
-                          ButtonSegment(
-                            value: ThemeMode.system,
-                            icon: const Icon(Icons.settings_suggest, size: 16),
-                            label: Text(provider.tr('theme_system')),
-                          ),
-                        ],
-                        selected: {provider.themeMode},
-                        onSelectionChanged: (set) {
-                          provider.setThemeMode(set.first);
-                        },
                       ),
                     ],
                   ),
@@ -412,7 +416,7 @@ class AppearanceScreen extends StatelessWidget {
         ? provider.secondaryColor
         : provider.widgetSecondaryColor;
 
-    final alpha = (provider.widgetOpacity * 2.55).round().clamp(20, 255);
+    final alpha = (provider.widgetOpacity * 2.55).round().clamp(0, 255);
 
     final Color bgColor;
     final Border border;
@@ -512,7 +516,7 @@ class AppearanceScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      isOnline ? 'ÇEVRİMİÇİ' : 'ÇEVRİMDIŞI',
+                      isOnline ? provider.tr('online') : provider.tr('offline'),
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -552,7 +556,7 @@ class AppearanceScreen extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Son nabız: 12:45',
+                '${provider.tr('last_heartbeat')}: 12:45',
                 style: TextStyle(
                   fontSize: 11,
                   color: brandColor,

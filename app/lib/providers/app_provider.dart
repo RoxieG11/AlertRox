@@ -387,7 +387,7 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> setWidgetOpacity(int opacity) async {
-    _widgetOpacity = opacity.clamp(10, 100);
+    _widgetOpacity = opacity.clamp(0, 100);
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt(prefWidgetOpacity, _widgetOpacity);

@@ -171,6 +171,22 @@ class SupabaseService {
         .order('created_at', ascending: true);
   }
 
+  Future<List<Map<String, dynamic>>> getMessages(String deviceId,
+      {int limit = 50}) async {
+    try {
+      final response = await client
+          .from('messages')
+          .select()
+          .eq('device_id', deviceId)
+          .order('created_at', ascending: true)
+          .limit(limit);
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      debugPrint('Error getting messages: $e');
+      return [];
+    }
+  }
+
   Future<void> sendMessage(String deviceId, String text) async {
     await client.from('messages').insert({
       'device_id': deviceId,

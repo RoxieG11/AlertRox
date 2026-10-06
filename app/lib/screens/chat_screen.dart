@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
@@ -18,6 +19,41 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isSending = false;
   bool _isClearing = false;
   List<Map<String, dynamic>> _cachedMessages = const [];
+  Timer? _pollTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _startPolling();
+  }
+
+  void _startPolling() {
+    _pollTimer?.cancel();
+    _fetchLatestMessages();
+    _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+      if (mounted && widget.isActive) {
+        _fetchLatestMessages();
+      }
+    });
+  }
+
+  Future<void> _fetchLatestMessages() async {
+    final provider = Provider.of<AppProvider>(context, listen: false);
+    final dev = provider.selectedDevice;
+    if (dev == null) return;
+    final targetId = (dev['device_id'] ?? dev['id']).toString();
+    final list = await SupabaseService().getMessages(targetId);
+    if (!mounted) return;
+    if (list.length != _cachedMessages.length ||
+        (list.isNotEmpty &&
+            _cachedMessages.isNotEmpty &&
+            list.last['id'] != _cachedMessages.last['id'])) {
+      setState(() {
+        _cachedMessages = list;
+      });
+      _scrollToBottom();
+    }
+  }
 
   Future<void> _clearChat(String targetId, AppProvider provider) async {
     final confirmed = await showDialog<bool>(
@@ -71,6 +107,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _msgController.dispose();
     _scrollController.dispose();
     super.dispose();

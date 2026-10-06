@@ -27,25 +27,39 @@ class AlertRoxChatWindow:
 
     def launch(self):
         """Chat penceresini başlatır (eğer açık değilse açar, açıksa öne getirir)."""
-        if self.is_open and self.root:
+        if self.root:
             try:
+                self.is_open = True
                 self.root.after(0, self._bring_to_front)
+                return
             except Exception:
                 pass
-            return
 
-        self._thread = threading.Thread(target=self._run_gui, daemon=True)
-        self._thread.start()
+        if not self._thread or not self._thread.is_alive():
+            self._thread = threading.Thread(target=self._run_gui, daemon=True)
+            self._thread.start()
 
     def _bring_to_front(self):
         if self.root:
-            self.root.deiconify()
-            self.root.attributes("-topmost", True)
-            self.root.attributes("-topmost", False)
-            self.root.focus_force()
+            try:
+                self.root.deiconify()
+                self.root.lift()
+                self.root.attributes("-topmost", True)
+                self.root.attributes("-topmost", False)
+                self.root.focus_force()
+            except Exception:
+                pass
 
     def _run_gui(self):
-        self.root = tk.Tk()
+        try:
+            if "DISPLAY" not in os.environ and "WAYLAND_DISPLAY" not in os.environ:
+                os.environ["DISPLAY"] = ":0"
+            self.root = tk.Tk()
+        except Exception as e:
+            print(f"[AlertRox Chat] GUI başlatma hatası: {e}")
+            self.is_open = False
+            return
+
         self.root.title("AlertRox — Canlı Sohbet")
         self.root.geometry("400x560")
         self.root.minsize(360, 480)
@@ -210,14 +224,13 @@ class AlertRoxChatWindow:
         self.root.mainloop()
 
     def _on_close(self):
+        """Pencere kapatıldığında yok etmek yerine gizler (withdraw). Böylece yeniden açılması anında ve hatasız olur."""
         self.is_open = False
-        self._poll_running = False
         if self.root:
             try:
-                self.root.destroy()
+                self.root.withdraw()
             except Exception:
                 pass
-            self.root = None
 
     def _confirm_clear_chat(self):
         """PC'den sohbeti temizleme onayı."""

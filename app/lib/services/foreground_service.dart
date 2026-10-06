@@ -6,6 +6,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:home_widget/home_widget.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../constants/translations.dart';
 import 'supabase_service.dart';
 
 @pragma('vm:entry-point')
@@ -105,6 +106,7 @@ class WatchdogTaskHandler extends TaskHandler {
       if (devices.isEmpty) return;
 
       final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
 
       for (final dev in devices) {
         final deviceId = (dev['device_id'] ?? dev['id']).toString();
@@ -185,18 +187,24 @@ class WatchdogTaskHandler extends TaskHandler {
             lastWidgetName != devName;
 
         if (widgetNeedsUpdate) {
-          final statusOnlineText = langCode == 'tr' ? 'ÇEVRİMİÇİ' : 'ONLINE';
-          final statusOfflineText =
-              langCode == 'tr' ? 'ÇEVRİMDIŞI' : 'OFFLINE';
+          final statusOnlineText = AppTranslations.get('status_online', langCode);
+          final statusOfflineText = AppTranslations.get('status_offline', langCode);
           final status =
               isDevOnline ? '● $statusOnlineText' : '● $statusOfflineText';
-          final lastSeenLabel = langCode == 'tr' ? 'Son nabız' : 'Last seen';
+          final lastSeenLabel = AppTranslations.get('last_seen', langCode);
 
           final widgetMode = prefs.getString('widget_mode') ?? 'dark';
           final widgetGlass = prefs.getBool('widget_glass') ?? true;
           final widgetOpacity = prefs.getInt('widget_opacity') ?? 85;
-          final widgetAccent = prefs.getInt('widget_accent') ?? 0xFF00F0FF;
-          final widgetSecondary = prefs.getInt('widget_secondary') ?? 0xFF10B981;
+
+          final widgetColorMode = prefs.getString('widget_color_mode') ?? 'same_as_app';
+          final appAccent = prefs.getInt('theme_accent') ?? 0xFF00F0FF;
+          final appSecondary = prefs.getInt('theme_secondary') ?? 0xFF10B981;
+          final customAccent = prefs.getInt('widget_accent') ?? 0xFF00F0FF;
+          final customSecondary = prefs.getInt('widget_secondary') ?? 0xFF10B981;
+
+          final effectiveAccent = widgetColorMode == 'same_as_app' ? appAccent : customAccent;
+          final effectiveSecondary = widgetColorMode == 'same_as_app' ? appSecondary : customSecondary;
 
           await HomeWidget.saveWidgetData<String>('device_name', devName);
           await HomeWidget.saveWidgetData<String>('device_status', status);
@@ -207,9 +215,9 @@ class WatchdogTaskHandler extends TaskHandler {
           await HomeWidget.saveWidgetData<String>('widget_mode', widgetMode);
           await HomeWidget.saveWidgetData<bool>('widget_glass', widgetGlass);
           await HomeWidget.saveWidgetData<int>('widget_opacity', widgetOpacity);
-          await HomeWidget.saveWidgetData<int>('widget_accent', widgetAccent);
+          await HomeWidget.saveWidgetData<int>('widget_accent', effectiveAccent);
           await HomeWidget.saveWidgetData<int>(
-              'widget_secondary', widgetSecondary);
+              'widget_secondary', effectiveSecondary);
 
           await HomeWidget.updateWidget(
             name: 'AlertRoxWidgetProvider',
