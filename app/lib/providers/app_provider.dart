@@ -165,9 +165,18 @@ class AppProvider extends ChangeNotifier {
           (wasOnline == null && isOnlineNow && isRecentBoot);
 
       if (shouldNotify && !_notifiedBootDeviceIds.contains(id)) {
-        final name = dev['name'] ?? dev['device_name'] ?? 'PC';
-        NotificationService().showDeviceOnlineNotification(name.toString());
+        // Fallback: If foreground service is disabled, AppProvider fires the notification.
+        // If foreground service is enabled, WatchdogTaskHandler handles it to prevent duplicates.
+        if (!_foregroundServiceEnabled) {
+          final name = dev['name'] ?? dev['device_name'] ?? 'PC';
+          NotificationService().showDeviceOnlineNotification(name.toString());
+        }
         _notifiedBootDeviceIds.add(id);
+
+        final currentBootId = lastBootStr ?? 'boot_$id';
+        SharedPreferences.getInstance().then((prefs) {
+          prefs.setString('last_notified_boot_$id', currentBootId);
+        });
       }
 
       if (!isOnlineNow) {

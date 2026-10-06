@@ -1,10 +1,14 @@
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_provider.dart';
 import '../constants/translations.dart';
 import '../services/supabase_service.dart';
 import '../services/notification_service.dart';
+import '../services/foreground_service.dart';
 import '../constants/theme.dart';
 import '../widgets/glass_card.dart';
 
@@ -19,11 +23,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _urlController = TextEditingController();
   final TextEditingController _keyController = TextEditingController();
   bool _isSaving = false;
+  bool _isIgnoringBattery = false;
 
   @override
   void initState() {
     super.initState();
     _loadCurrentConfig();
+    _checkBatteryStatus();
+  }
+
+  Future<void> _checkBatteryStatus() async {
+    if (!kIsWeb && Platform.isAndroid) {
+      final status = await FlutterForegroundTask.isIgnoringBatteryOptimizations;
+      if (mounted) setState(() => _isIgnoringBattery = status);
+    }
   }
 
   Future<void> _loadCurrentConfig() async {
@@ -47,6 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final url = _urlController.text.trim();
       final key = _keyController.text.trim();
       await SupabaseService().saveCredentials(url, key);
+      await AlertRoxForegroundService.syncCredentials(url, key);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -64,6 +78,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _resetDefaults() async {
     final provider = Provider.of<AppProvider>(context, listen: false);
     await SupabaseService().resetCredentials();
+    await AlertRoxForegroundService.syncCredentials(
+      SupabaseService.defaultUrl,
+      SupabaseService.defaultKey,
+    );
     _urlController.text = SupabaseService.defaultUrl;
     _keyController.text = SupabaseService.defaultKey;
 
@@ -440,7 +458,99 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 24),
 
-          // ── 3. Güvenlik & Kapatma Ayarları ──
+          // ── 3. Arka Planda Çalışmayı Garantile (Pil & Sistem İzinleri) ──
+          _buildSectionHeader(provider.tr('settings_battery_optimization')),
+          GlassCard(
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: Icon(
+                      _isIgnoringBattery
+                          ? Icons.battery_charging_full_rounded
+                          : Icons.battery_alert_rounded,
+                      color: _isIgnoringBattery
+                          ? AppTheme.statusOnline
+                          : AppTheme.statusWarning,
+                    ),
+                    title: Text(provider.tr('settings_battery_ignore')),
+                    subtitle: Text(
+                      provider.tr('settings_battery_ignore_desc'),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    trailing: _isIgnoringBattery
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color:
+                                  AppTheme.statusOnline.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color:
+                                    AppTheme.statusOnline.withValues(alpha: 0.5),
+                              ),
+                            ),
+                            child: Text(
+                              provider
+                                  .tr('settings_battery_status_unrestricted'),
+                              style: const TextStyle(
+                                color: AppTheme.statusOnline,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          )
+                        : ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                            ),
+                            onPressed: () async {
+                              await FlutterForegroundTask
+                                  .requestIgnoreBatteryOptimization();
+                              await Future.delayed(
+                                  const Duration(seconds: 1));
+                              await _checkBatteryStatus();
+                            },
+                            child: Text(
+                              provider.tr('settings_battery_status_restricted'),
+                              style: const TextStyle(fontSize: 11),
+                            ),
+                          ),
+                  ),
+                  const Divider(height: 16),
+                  ListTile(
+                    leading: const Icon(Icons.settings_suggest_outlined),
+                    title: Text(provider.tr('settings_autostart_title')),
+                    subtitle: Text(
+                      provider.tr('settings_autostart_desc'),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    trailing: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 10, vertical: 8),
+                      ),
+                      onPressed: () async {
+                        await FlutterForegroundTask
+                            .openIgnoreBatteryOptimizationSettings();
+                      },
+                      icon: const Icon(Icons.open_in_new, size: 16),
+                      label: Text(
+                        provider.tr('settings_open_system_settings'),
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // ── 4. Güvenlik & Kapatma Ayarları ──
           _buildSectionHeader(provider.tr('settings_security_shutdown')),
           GlassCard(
             child: Padding(
