@@ -1,16 +1,18 @@
 [Unit]
-Description=AlertRox PC Agent — Bilgisayar açılış bildirimi ve uzaktan kontrol servisi
-After=network-online.target
+Description=AlertRox PC Agent — Bilgisayar Açılış Gözcüsü
+After=network-online.target graphical-session.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=%i
-WorkingDirectory=/home/%i/AlertRox
-ExecStart=/usr/bin/python3 -m agent.main
-Restart=on-failure
-RestartSec=10
+WorkingDirectory=/home/%i/Masaüstü/RoxieProject/AlertRox
+ExecStart=/home/%i/Masaüstü/RoxieProject/AlertRox/venv/bin/python -m agent.main
+Restart=always
+RestartSec=5
 Environment=PYTHONUNBUFFERED=1
+Environment=DISPLAY=:0
+Environment=WAYLAND_DISPLAY=wayland-0
+Environment=XDG_RUNTIME_DIR=/run/user/1000
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target

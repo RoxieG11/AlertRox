@@ -317,6 +317,15 @@ def main():
     command_thread.start()
     print(f"[AlertRox] 👂 Güvenli komut dinleyici aktif (her {COMMAND_POLL_INTERVAL}s, max_age: 60s)")
 
+    # Arka plan sohbet dinleyicisini başlat (Telefondan mesaj gelince otomatik pencere açılır)
+    global chat_window_instance
+    try:
+        chat_window_instance = AlertRoxChatWindow(client)
+        chat_window_instance.start_background_listener()
+        print("[AlertRox] 💬 Sohbet arka plan dinleyicisi aktif!")
+    except Exception as e:
+        print(f"[AlertRox] ⚠️ Sohbet dinleyicisi başlatılamadı: {e}")
+
     print(f"\n[AlertRox] Çalışıyor... (Durdurmak için Ctrl+C)\n")
 
     try:

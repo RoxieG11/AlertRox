@@ -18,40 +18,54 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isSending = false;
   bool _isClearing = false;
-  List<Map<String, dynamic>> _cachedMessages = const [];
+  bool _isLoading = true;
+  List<Map<String, dynamic>> _messages = [];
   Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
+    _fetchMessages(showLoading: true);
     _startPolling();
   }
 
   void _startPolling() {
     _pollTimer?.cancel();
-    _fetchLatestMessages();
-    _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+    _pollTimer = Timer.periodic(const Duration(milliseconds: 1500), (_) {
       if (mounted && widget.isActive) {
-        _fetchLatestMessages();
+        _fetchMessages(showLoading: false);
       }
     });
   }
 
-  Future<void> _fetchLatestMessages() async {
+  Future<void> _fetchMessages({bool showLoading = false}) async {
     final provider = Provider.of<AppProvider>(context, listen: false);
     final dev = provider.selectedDevice;
     if (dev == null) return;
     final targetId = (dev['device_id'] ?? dev['id']).toString();
-    final list = await SupabaseService().getMessages(targetId);
-    if (!mounted) return;
-    if (list.length != _cachedMessages.length ||
-        (list.isNotEmpty &&
-            _cachedMessages.isNotEmpty &&
-            list.last['id'] != _cachedMessages.last['id'])) {
-      setState(() {
-        _cachedMessages = list;
-      });
-      _scrollToBottom();
+
+    if (showLoading && _messages.isEmpty) {
+      setState(() => _isLoading = true);
+    }
+
+    try {
+      final list = await SupabaseService().getMessages(targetId, limit: 100);
+      if (!mounted) return;
+
+      final bool hasChanged = list.length != _messages.length ||
+          (list.isNotEmpty && _messages.isNotEmpty && list.last['id'] != _messages.last['id']);
+
+      if (hasChanged || _isLoading) {
+        setState(() {
+          _messages = list;
+          _isLoading = false;
+        });
+        _scrollToBottom();
+      }
+    } catch (_) {
+      if (mounted && _isLoading) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -80,7 +94,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (confirmed != true) return;
 
-    setState(() => _isClearing = true);
+    setState(() {
+      _isClearing = true;
+      _messages.clear();
+    });
     try {
       await SupabaseService().clearMessages(targetId);
       if (mounted) {
@@ -114,30 +131,43 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _scrollToBottom() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent + 80,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeOut,
-      );
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent + 120,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   Future<void> _sendMessage() async {
     final text = _msgController.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty || _isSending) return;
 
     final provider = Provider.of<AppProvider>(context, listen: false);
     final device = provider.selectedDevice;
     if (device == null) return;
     final targetId = (device['device_id'] ?? device['id']).toString();
 
-    setState(() => _isSending = true);
     _msgController.clear();
+    setState(() {
+      _isSending = true;
+      // Anlık iyimser UI güncellemesi (Optimistic Update)
+      _messages.add({
+        'id': 'temp_${DateTime.now().millisecondsSinceEpoch}',
+        'device_id': targetId,
+        'sender': 'mobile',
+        'text': text,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+    });
+    _scrollToBottom();
 
     try {
       await SupabaseService().sendMessage(targetId, text);
-      _scrollToBottom();
+      await _fetchMessages();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -213,60 +243,39 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
-          // Messages Stream List
+          // Messages List
           Expanded(
-            child: StreamBuilder<List<Map<String, dynamic>>>(
-              initialData: _cachedMessages,
-              stream: widget.isActive
-                  ? SupabaseService().streamMessages(targetId)
-                  : null,
-              builder: (context, snapshot) {
-                if (snapshot.hasData) {
-                  _cachedMessages = snapshot.data!;
-                }
-                if (snapshot.connectionState == ConnectionState.waiting &&
-                    !snapshot.hasData &&
-                    _cachedMessages.isEmpty) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final messages = snapshot.data ?? _cachedMessages;
-                if (messages.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.chat_bubble_outline,
-                          size: 56,
-                          color: AppTheme.darkTextMuted,
+            child: _isLoading && _messages.isEmpty
+                ? const Center(child: CircularProgressIndicator())
+                : _messages.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.chat_bubble_outline,
+                              size: 56,
+                              color: AppTheme.darkTextMuted,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              provider.tr('chat_empty'),
+                              style: const TextStyle(color: AppTheme.darkTextMuted),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          provider.tr('chat_empty'),
-                          style: const TextStyle(color: AppTheme.darkTextMuted),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                WidgetsBinding.instance
-                    .addPostFrameCallback((_) => _scrollToBottom());
-
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 12),
-                  itemCount: messages.length,
-                  itemBuilder: (ctx, index) {
-                    final msg = messages[index];
-                    final isMe = msg['sender'] == 'mobile';
-                    return _buildMessageBubble(provider, msg, isMe);
-                  },
-                );
-              },
-            ),
+                      )
+                    : ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 12),
+                        itemCount: _messages.length,
+                        itemBuilder: (ctx, index) {
+                          final msg = _messages[index];
+                          final isMe = msg['sender'] == 'mobile';
+                          return _buildMessageBubble(provider, msg, isMe);
+                        },
+                      ),
           ),
 
           // Message Input Field
@@ -325,6 +334,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildMessageBubble(
       AppProvider provider, Map<String, dynamic> msg, bool isMe) {
     final timeStr = _formatMsgTime(msg['created_at']);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
@@ -337,7 +347,7 @@ class _ChatScreenState extends State<ChatScreen> {
         decoration: BoxDecoration(
           color: isMe
               ? AppTheme.primaryTeal.withValues(alpha: 0.9)
-              : Theme.of(context).cardColor,
+              : (isDark ? const Color(0xFF161F30) : const Color(0xFFE2E8F0)),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -345,7 +355,9 @@ class _ChatScreenState extends State<ChatScreen> {
             bottomRight: Radius.circular(isMe ? 4 : 16),
           ),
           border: Border.all(
-            color: isMe ? AppTheme.primaryTeal : AppTheme.darkCardBorder,
+            color: isMe
+                ? AppTheme.primaryTeal
+                : (isDark ? AppTheme.darkCardBorder : const Color(0xFFCBD5E1)),
             width: 1,
           ),
         ),
@@ -360,7 +372,9 @@ class _ChatScreenState extends State<ChatScreen> {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
-                color: isMe ? Colors.black87 : AppTheme.accentCyan,
+                color: isMe
+                    ? Colors.black87
+                    : (isDark ? AppTheme.accentCyan : const Color(0xFF0F766E)),
               ),
             ),
             const SizedBox(height: 4),
@@ -368,7 +382,9 @@ class _ChatScreenState extends State<ChatScreen> {
               msg['text'] ?? msg['message'] ?? '',
               style: TextStyle(
                 fontSize: 14,
-                color: isMe ? Colors.black : Colors.white,
+                color: isMe
+                    ? Colors.black
+                    : (isDark ? Colors.white : const Color(0xFF0F172A)),
               ),
             ),
             const SizedBox(height: 4),
@@ -376,7 +392,9 @@ class _ChatScreenState extends State<ChatScreen> {
               timeStr,
               style: TextStyle(
                 fontSize: 9,
-                color: isMe ? Colors.black54 : AppTheme.darkTextMuted,
+                color: isMe
+                    ? Colors.black54
+                    : (isDark ? AppTheme.darkTextMuted : const Color(0xFF64748B)),
               ),
             ),
           ],
@@ -395,3 +413,4 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 }
+

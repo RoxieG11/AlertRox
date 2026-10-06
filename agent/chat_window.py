@@ -212,16 +212,34 @@ class AlertRoxChatWindow:
         )
         send_btn.pack(side=tk.RIGHT)
 
+        # Geçmiş mesajları yükle
+        try:
+            initial_msgs = self.client.get_chat_messages(limit=40)
+            for m in initial_msgs:
+                self._seen_ids.add(m["id"])
+                is_mob = m.get("sender") == "mobile"
+                time_str = m.get("created_at", "")[11:16] if m.get("created_at") else ""
+                sender = "📱 Telefon" if is_mob else "💻 PC (Siz)"
+                self._append_message(sender, m.get("text", ""), time_str, is_mob)
+        except Exception:
+            pass
+
         # Pencere kapatılınca
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
-        # Mesaj dinleme döngüsünü başlat
-        self._poll_running = True
-        self._seen_ids.clear()
-        threading.Thread(target=self._poll_messages, daemon=True).start()
+        # Mesaj dinleme döngüsünü başlat (eğer henüz başlamadıysa)
+        if not self._poll_running:
+            self._poll_running = True
+            threading.Thread(target=self._poll_messages, daemon=True).start()
 
         self._bring_to_front()
         self.root.mainloop()
+
+    def start_background_listener(self):
+        """Uygulama açılışında arka planda mesaj dinleyicisini başlatır."""
+        if not self._poll_running:
+            self._poll_running = True
+            threading.Thread(target=self._poll_messages, daemon=True).start()
 
     def _on_close(self):
         """Pencere kapatıldığında yok etmek yerine gizler (withdraw). Böylece yeniden açılması anında ve hatasız olur."""
@@ -304,11 +322,11 @@ class AlertRoxChatWindow:
         self.root.after(0, _insert)
 
     def _poll_messages(self):
-        """Supabase'den mesajları çeker ve telefondan silindiğinde PC ekranını da anında temizler."""
+        """Supabase'den mesajları çeker ve telefondan mesaj geldiğinde pencereyi öne getirir."""
         while self._poll_running:
             try:
-                if not self.is_open or not self.client:
-                    time.sleep(1.5)
+                if not self.client:
+                    time.sleep(2)
                     continue
 
                 messages = self.client.get_chat_messages(limit=40)
@@ -339,8 +357,8 @@ class AlertRoxChatWindow:
                             sender = "📱 Telefon" if is_mob else "💻 PC (Siz)"
                             self._append_message(sender, m.get("text", ""), time_str, is_mob)
                             if is_mob:
-                                self._bring_to_front()
+                                self.launch()
             except Exception as e:
                 pass
 
-            time.sleep(2)
+            time.sleep(1.5)
