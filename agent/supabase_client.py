@@ -101,6 +101,7 @@ class AlertRoxClient:
     def register_device(self) -> dict:
         """Cihazı kaydet veya güncelle (upsert)."""
         self.ensure_authenticated()
+        mac_addr = self._get_mac_address()
         data = {
             "device_id": self.device_id,
             "owner_id": self.user_id,
@@ -109,7 +110,7 @@ class AlertRoxClient:
             "last_boot": datetime.now(timezone.utc).isoformat(),
             "last_heartbeat": datetime.now(timezone.utc).isoformat(),
             "ip_address": self._get_local_ip(),
-            "os_info": f"{platform.system()} {platform.release()} ({platform.machine()})",
+            "os_info": f"{platform.system()} {platform.release()} ({platform.machine()}) | MAC:{mac_addr}",
         }
 
         result = (
@@ -342,3 +343,13 @@ class AlertRoxClient:
             "mp3": "audio/mpeg",
         }
         return types.get(ext, "application/octet-stream")
+
+    @staticmethod
+    def _get_mac_address() -> str:
+        """Sistemin birincil MAC adresini bulur."""
+        try:
+            import uuid
+            node = uuid.getnode()
+            return ":".join(["{:02x}".format((node >> ele) & 0xFF) for ele in range(0, 8 * 6, 8)][::-1])
+        except Exception:
+            return "00:00:00:00:00:00"

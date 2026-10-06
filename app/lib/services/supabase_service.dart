@@ -151,15 +151,30 @@ class SupabaseService {
   }
 
   // Commands API
-  Future<void> sendCommand(String deviceId, String commandType,
+  Future<Map<String, dynamic>> sendCommand(String deviceId, String commandType,
       [Map<String, dynamic>? payload]) async {
-    await client.from('commands').insert({
+    final res = await client.from('commands').insert({
       'device_id': deviceId,
       'command_type': commandType,
       'status': 'pending',
       'payload': payload ?? {},
       'owner_id': currentUser?.id,
-    });
+    }).select().single();
+    return Map<String, dynamic>.from(res);
+  }
+
+  Future<Map<String, dynamic>?> getCommandStatus(String commandId) async {
+    try {
+      final res = await client
+          .from('commands')
+          .select()
+          .eq('id', commandId)
+          .maybeSingle();
+      if (res != null) {
+        return Map<String, dynamic>.from(res);
+      }
+    } catch (_) {}
+    return null;
   }
 
   // Messages API (Live Bidirectional Chat)

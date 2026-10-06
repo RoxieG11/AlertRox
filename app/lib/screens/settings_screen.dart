@@ -709,7 +709,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'AlertRox v1.4.2 • Open Source Security',
+                    'AlertRox v1.5.0 • Open Source Security',
                     style: TextStyle(
                       fontSize: 11,
                       color: Theme.of(context)

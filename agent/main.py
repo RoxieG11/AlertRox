@@ -27,7 +27,9 @@ from agent.supabase_client import AlertRoxClient
 from agent.system_actions import COMMAND_MAP, shutdown_now, cancel_shutdown
 from agent.chat_window import AlertRoxChatWindow
 from agent.shutdown_window import ShutdownCountdownWindow
+from agent.battery_monitor import BatteryMonitor
 
+battery_monitor_instance = None
 chat_window_instance = None
 shutdown_window_instance = None
 
@@ -226,6 +228,107 @@ def execute_command(client: AlertRoxClient, command: dict):
         show_desktop_notification("AlertRox Güvenlik Uyarısı", "Ekran görüntüsü alındı.")
         client.log_event("privacy_alert", "Kullanıcı bilgilendirildi: Ekran görüntüsü alındı")
 
+    # Evrensel Pano senkronizasyonu
+    if cmd_type == "set_clipboard":
+        text = payload.get("text", "")
+        success, message = COMMAND_MAP["set_clipboard"]["func"](text)
+        show_desktop_notification("AlertRox Pano", "Telefondan panoya metin aktarıldı.")
+        if success:
+            client.update_command_status(cmd_id, "completed")
+            client.log_event("clipboard_synced", "Telefondan PC panosuna metin senkronize edildi")
+        else:
+            client.update_command_status(cmd_id, "failed", error_message=message)
+        return
+
+    # Pano içeriğini telefona gönderme
+    if cmd_type == "get_clipboard":
+        from agent.system_actions import get_clipboard
+        text = get_clipboard()
+        client.update_command_status(cmd_id, "completed")
+        client.client.table("commands").update({"payload": {"text": text}}).eq("id", cmd_id).execute()
+        return
+
+    # Ses seviyesi ayarlama
+    if cmd_type == "set_volume":
+        vol = payload.get("volume", 50)
+        success, message = COMMAND_MAP["set_volume"]["func"](vol)
+        if success:
+            client.update_command_status(cmd_id, "completed")
+            client.log_event("volume_changed", f"PC ses seviyesi %{vol} olarak ayarlandı")
+        else:
+            client.update_command_status(cmd_id, "failed", error_message=message)
+        return
+
+    # Sesi aç/kapat (Mute)
+    if cmd_type == "toggle_mute":
+        success, message = COMMAND_MAP["toggle_mute"]["func"]()
+        if success:
+            client.update_command_status(cmd_id, "completed")
+            client.log_event("volume_mute_toggled", "PC ses sessize alma durumu değiştirildi")
+        else:
+            client.update_command_status(cmd_id, "failed", error_message=message)
+        return
+
+    # Medya kontrolü (play_pause, next, previous)
+    if cmd_type == "media_control":
+        action = payload.get("action", "play_pause")
+        success, message = COMMAND_MAP["media_control"]["func"](action)
+        if success:
+            client.update_command_status(cmd_id, "completed")
+            client.log_event("media_controlled", f"Medya kontrolü uygulandı: {action}")
+        else:
+            client.update_command_status(cmd_id, "failed", error_message=message)
+        return
+
+    # Uygulama başlatma
+    if cmd_type == "launch_app":
+        exec_cmd = payload.get("exec", "")
+        app_name = payload.get("name", exec_cmd)
+        success, message = COMMAND_MAP["launch_app"]["func"](exec_cmd)
+        if success:
+            show_desktop_notification("AlertRox", f"{app_name} başlatıldı")
+            client.update_command_status(cmd_id, "completed")
+            client.log_event("app_launched", f"Telefondan PC'de uygulama başlatıldı: {app_name}")
+        else:
+            client.update_command_status(cmd_id, "failed", error_message=message)
+        return
+
+    # Süreç / Açık uygulama kapatma
+    if cmd_type == "kill_process":
+        pid = payload.get("pid", 0)
+        pname = payload.get("name", f"PID {pid}")
+        success, message = COMMAND_MAP["kill_process"]["func"](pid)
+        if success:
+            client.update_command_status(cmd_id, "completed")
+            client.log_event("process_killed", f"Telefondan süreç sonlandırıldı: {pname}")
+        else:
+            client.update_command_status(cmd_id, "failed", error_message=message)
+        return
+
+    # Yüklü uygulamaları listeleme isteği
+    if cmd_type == "get_installed_apps":
+        from agent.system_actions import get_installed_applications
+        apps = get_installed_applications()
+        client.update_command_status(cmd_id, "completed")
+        client.client.table("commands").update({"payload": {"apps": apps}}).eq("id", cmd_id).execute()
+        return
+
+    # Çalışan uygulamaları listeleme isteği
+    if cmd_type == "get_running_apps":
+        from agent.system_actions import get_running_processes
+        procs = get_running_processes()
+        client.update_command_status(cmd_id, "completed")
+        client.client.table("commands").update({"payload": {"processes": procs}}).eq("id", cmd_id).execute()
+        return
+
+    # Ses durumunu sorgulama
+    if cmd_type == "get_volume":
+        from agent.system_actions import get_volume_status
+        vol_info = get_volume_status()
+        client.update_command_status(cmd_id, "completed")
+        client.client.table("commands").update({"payload": vol_info}).eq("id", cmd_id).execute()
+        return
+
     try:
         # mic_record süresi doğrulaması: 1..120
         if cmd_type == "mic_record":
@@ -318,13 +421,20 @@ def main():
     print(f"[AlertRox] 👂 Güvenli komut dinleyici aktif (her {COMMAND_POLL_INTERVAL}s, max_age: 60s)")
 
     # Arka plan sohbet dinleyicisini başlat (Telefondan mesaj gelince otomatik pencere açılır)
-    global chat_window_instance
+    global chat_window_instance, battery_monitor_instance
     try:
         chat_window_instance = AlertRoxChatWindow(client)
         chat_window_instance.start_background_listener()
         print("[AlertRox] 💬 Sohbet arka plan dinleyicisi aktif!")
     except Exception as e:
         print(f"[AlertRox] ⚠️ Sohbet dinleyicisi başlatılamadı: {e}")
+
+    # Laptop pil & güç durumu gözcüsünü başlat
+    try:
+        battery_monitor_instance = BatteryMonitor(client)
+        battery_monitor_instance.start()
+    except Exception as e:
+        print(f"[AlertRox] ⚠️ Pil gözcüsü başlatılamadı: {e}")
 
     print(f"\n[AlertRox] Çalışıyor... (Durdurmak için Ctrl+C)\n")
 

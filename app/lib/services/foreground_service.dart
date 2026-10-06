@@ -150,6 +150,56 @@ class WatchdogTaskHandler extends TaskHandler {
         }
 
         await prefs.setBool(prevOnlineKey, isOnlineNow);
+
+        // Laptop Pil & Güç Durumu Bildirimlerini Kontrol Et (activity_log)
+        try {
+          final logResp = await _supabaseClient!
+              .from('activity_log')
+              .select('id, event_type, message, created_at')
+              .eq('device_id', deviceId)
+              .inFilter('event_type', ['power_unplugged', 'battery_critical_low'])
+              .order('created_at', ascending: false)
+              .limit(1);
+
+          final logs = List<Map<String, dynamic>>.from(logResp);
+          if (logs.isNotEmpty) {
+            final latestLog = logs.first;
+            final logId = latestLog['id'].toString();
+            final lastHandledLogKey = 'last_handled_power_log_$deviceId';
+            final lastHandledId = prefs.getString(lastHandledLogKey);
+
+            if (lastHandledId != logId) {
+              final evType = latestLog['event_type'];
+              final msg = latestLog['message'] ?? '';
+              final createdAtStr = latestLog['created_at'] as String?;
+              bool isFresh = true;
+              if (createdAtStr != null) {
+                final dt = DateTime.tryParse(createdAtStr);
+                if (dt != null) {
+                  // Son 3 dakika içinde oluşmuş olayları bildir
+                  isFresh = DateTime.now().toUtc().difference(dt.toUtc()).inSeconds.abs() <= 180;
+                }
+              }
+
+              if (isFresh) {
+                if (evType == 'power_unplugged') {
+                  await _showPowerNotification(
+                    id: 2001,
+                    title: '⚡ AlertRox: $devName Şarjdan Çekildi!',
+                    body: msg.isNotEmpty ? msg : 'Laptop prizden çekildi, pille çalışıyor.',
+                  );
+                } else if (evType == 'battery_critical_low') {
+                  await _showPowerNotification(
+                    id: 2002,
+                    title: '🚨 AlertRox: Kritik Düşük Pil Uyarısı!',
+                    body: msg.isNotEmpty ? msg : '$devName pili %20 altına düştü! Lütfen şarja takın.',
+                  );
+                }
+              }
+              await prefs.setString(lastHandledLogKey, logId);
+            }
+          }
+        } catch (_) {}
       }
 
       // Update Home Screen Widget in background isolate
@@ -270,6 +320,32 @@ class WatchdogTaskHandler extends TaskHandler {
       id: 1001,
       title: '💻 AlertRox: $deviceName Açıldı!',
       body: 'Bilgisayarınız çevrimiçi oldu ve bağlantı kuruldu.',
+      notificationDetails: const NotificationDetails(android: androidDetails),
+    );
+  }
+
+  Future<void> _showPowerNotification({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+      'alertrox_power_channel',
+      'Güç ve Pil Bildirimleri',
+      channelDescription:
+          'Laptop şarjdan çekildiğinde veya pil azaldığında gönderilen acil bildirimler',
+      importance: Importance.max,
+      priority: Priority.max,
+      enableVibration: true,
+      playSound: true,
+      icon: '@mipmap/ic_launcher',
+    );
+
+    await _notificationsPlugin?.show(
+      id: id,
+      title: title,
+      body: body,
       notificationDetails: const NotificationDetails(android: androidDetails),
     );
   }
