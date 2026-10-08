@@ -149,7 +149,7 @@ def get_font(size, lang='en'):
     if lang in ['zh', 'ja']:
         font_path = '/usr/share/fonts/noto-cjk/NotoSansCJK-Bold.ttc'
     elif lang == 'ar':
-        font_path = '/usr/share/fonts/noto/NotoSansArabic-Black.ttf'
+        font_path = '/usr/share/fonts/TTF/DejaVuSans-Bold.ttf'
     else:
         font_path = '/usr/share/fonts/noto/NotoSans-Regular.ttf'
     try:
