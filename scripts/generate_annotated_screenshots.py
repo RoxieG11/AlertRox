@@ -4,6 +4,7 @@ AlertRox — Otomatik Ekran Görüntüsü Düzenleyici, Sansürleyici ve Çok Di
 """
 
 import os
+import math
 from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 RAW_DIR = "/home/roxie/.gemini/antigravity/brain/cd52aedc-4d61-443b-b52d-2febdb1b9cff/.user_uploaded"
@@ -180,8 +181,17 @@ def draw_pill_badge(draw, x, y, text, font, border_color=(0, 240, 255), bg_color
 
 def draw_callout_arrow(draw, start_pt, end_pt, color=(0, 240, 255), width=2):
     draw.line([start_pt, end_pt], fill=color, width=width)
-    r = 3
-    draw.ellipse([end_pt[0] - r, end_pt[1] - r, end_pt[0] + r, end_pt[1] + r], fill=color)
+    dx = end_pt[0] - start_pt[0]
+    dy = end_pt[1] - start_pt[1]
+    angle = math.atan2(dy, dx)
+    head_len = 9
+    head_angle = math.pi / 6
+    p1 = end_pt
+    p2 = (end_pt[0] - head_len * math.cos(angle - head_angle),
+          end_pt[1] - head_len * math.sin(angle - head_angle))
+    p3 = (end_pt[0] - head_len * math.cos(angle + head_angle),
+          end_pt[1] - head_len * math.sin(angle + head_angle))
+    draw.polygon([p1, p2, p3], fill=color)
 
 def censor_region(img, box, blur_radius=10, fill_color=(20, 20, 30)):
     cropped = img.crop(box)
@@ -201,14 +211,12 @@ def process_dashboard(lang):
     draw = ImageDraw.Draw(im)
     font = get_font(12, lang)
     
-    # Status Card Callout
+    # Status Card Callout Badge
     txt_status = ANNOTATIONS['dashboard']['status'][lang]
-    draw.rounded_rectangle([20, 130, 430, 305], radius=14, outline=(0, 240, 255, 220), width=2)
     draw_pill_badge(draw, 30, 105, txt_status, font, border_color=(0, 240, 255), dot_color=(0, 240, 255))
     
-    # Action Cards Callout
+    # Action Cards Callout Badge
     txt_actions = ANNOTATIONS['dashboard']['actions'][lang]
-    draw.rounded_rectangle([20, 365, 430, 895], radius=16, outline=(16, 185, 129, 220), width=2)
     draw_pill_badge(draw, 30, 345, txt_actions, font, border_color=(16, 185, 129), dot_color=(16, 185, 129))
     
     return im
@@ -224,16 +232,14 @@ def process_apps(lang):
     draw = ImageDraw.Draw(im)
     font = get_font(12, lang)
     
-    # Tabs Callout
+    # Tabs Callout Badge
     txt_tabs = ANNOTATIONS['apps']['tabs'][lang]
-    draw.rounded_rectangle([20, 115, 430, 170], radius=10, outline=(0, 240, 255, 220), width=2)
     draw_pill_badge(draw, 30, 95, txt_tabs, font, border_color=(0, 240, 255), dot_color=(0, 240, 255))
     
-    # Launch button Callout
+    # Launch button Callout Badge & Arrow
     txt_launch = ANNOTATIONS['apps']['launch'][lang]
-    draw.rounded_rectangle([285, 265, 400, 315], radius=12, outline=(16, 185, 129, 240), width=3)
-    draw_pill_badge(draw, 80, 235, txt_launch, font, border_color=(16, 185, 129), dot_color=(16, 185, 129))
-    draw_callout_arrow(draw, (295, 250), (340, 265), color=(16, 185, 129), width=2)
+    b_launch = draw_pill_badge(draw, 45, 235, txt_launch, font, border_color=(16, 185, 129), dot_color=(16, 185, 129))
+    draw_callout_arrow(draw, (b_launch[0] + b_launch[2] + 4, b_launch[1] + b_launch[3] // 2), (320, 280), color=(16, 185, 129), width=2)
     
     return im
 
@@ -246,14 +252,12 @@ def process_media(lang):
     draw = ImageDraw.Draw(im)
     font = get_font(12, lang)
     
-    # Audio Player
+    # Audio Player Badge
     txt_audio = ANNOTATIONS['media']['audio'][lang]
-    draw.rounded_rectangle([20, 130, 430, 350], radius=16, outline=(0, 240, 255, 220), width=2)
     draw_pill_badge(draw, 30, 110, txt_audio, font, border_color=(0, 240, 255), dot_color=(0, 240, 255))
     
-    # Screenshot Card
+    # Screenshot Card Badge
     txt_prev = ANNOTATIONS['media']['preview'][lang]
-    draw.rounded_rectangle([20, 370, 430, 735], radius=16, outline=(16, 185, 129, 220), width=2)
     draw_pill_badge(draw, 30, 350, txt_prev, font, border_color=(16, 185, 129), dot_color=(16, 185, 129))
     
     return im
@@ -262,17 +266,12 @@ def process_volume(lang):
     im = Image.open(RAW_FILES['volume']).convert('RGBA')
     
     if lang == 'tr':
-        return im  # Turkish: Pure clean screenshot with NO rectangles!
+        return im  # Turkish: Pure clean screenshot!
     
-    # For other languages: NO broken rectangles on slider or buttons!
-    # Just a clean frame around the bottom sheet and a single header badge above the sheet.
     draw = ImageDraw.Draw(im)
     font = get_font(12, lang)
     
-    # Clean frame around the bottom sheet (2, 668, 446, 1022)
-    draw.rounded_rectangle([2, 668, 446, 1022], radius=28, outline=(0, 240, 255, 220), width=3)
-    
-    # Badge placed neatly above the sheet at (30, 636)
+    # Badge placed neatly above the sheet at (25, 636)
     txt_vol = ANNOTATIONS['volume']['slider'][lang]
     draw_pill_badge(draw, 25, 636, txt_vol, font, border_color=(0, 240, 255), dot_color=(0, 240, 255))
     
@@ -287,9 +286,8 @@ def process_widget(lang):
     draw = ImageDraw.Draw(im)
     font = get_font(12, lang)
     
-    # Widget Box
+    # Widget Badge
     txt_widget = ANNOTATIONS['widget']['widget'][lang]
-    draw.rounded_rectangle([30, 95, 420, 310], radius=18, outline=(0, 240, 255, 240), width=3)
     draw_pill_badge(draw, 35, 70, txt_widget, font, border_color=(0, 240, 255), dot_color=(0, 240, 255))
     
     return im
@@ -307,18 +305,14 @@ def process_supabase(lang):
     draw = ImageDraw.Draw(im)
     font = get_font(13, lang)
     
-    # Step 1: SQL Editor Query Area (170, 95, 700, 420)
+    # Step 1: SQL Editor Query Area Badge
     txt_step1 = ANNOTATIONS['supabase']['step1'][lang]
-    draw.rounded_rectangle([170, 95, 700, 420], radius=10, outline=(0, 240, 255, 180), width=2)
     draw_pill_badge(draw, 185, 110, txt_step1, font, border_color=(0, 240, 255), pad_x=12, pad_y=6, dot_color=(0, 240, 255))
     
-    # Step 2: Run Button exact coordinates: (966, 55, 1008, 79)
+    # Step 2: Run Button Badge & Arrow pointing to Run button
     txt_step2 = ANNOTATIONS['supabase']['step2'][lang]
-    draw.rounded_rectangle([964, 53, 1009, 81], radius=6, outline=(16, 185, 129, 255), width=3)
-    
-    # Place pill badge at left of Run button: x=640..700, y=52
-    draw_pill_badge(draw, 640, 52, txt_step2, font, border_color=(16, 185, 129), pad_x=12, pad_y=6, dot_color=(16, 185, 129))
-    draw_callout_arrow(draw, (935, 67), (960, 67), color=(16, 185, 129), width=2)
+    b2 = draw_pill_badge(draw, 680, 52, txt_step2, font, border_color=(16, 185, 129), pad_x=12, pad_y=6, dot_color=(16, 185, 129))
+    draw_callout_arrow(draw, (b2[0] + b2[2] + 4, b2[1] + b2[3] // 2), (940, 66), color=(16, 185, 129), width=2)
     
     return im
 
