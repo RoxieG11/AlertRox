@@ -122,26 +122,28 @@ ANNOTATIONS = {
     },
     'supabase': {
         'step1': {
+            'tr': '1. "supabase_schema.sql" kodunu buraya yapıştırın',
             'en': '1. Paste "supabase_schema.sql" code here',
-            'de': '1. Fügen Sie "supabase_schema.sql" hier ein',
+            'de': '1. "supabase_schema.sql" Code hier einfügen',
             'ru': '1. Вставьте код "supabase_schema.sql" сюда',
-            'es': '1. Pega el código de "supabase_schema.sql" aquí',
+            'es': '1. Pega el código "supabase_schema.sql" aquí',
             'ar': '1. الصق كود "supabase_schema.sql" هنا',
             'fr': '1. Collez le code "supabase_schema.sql" ici',
             'pt': '1. Cole o código "supabase_schema.sql" aqui',
-            'zh': '1. 将 "supabase_schema.sql" 代码粘贴在此处',
-            'ja': '1. ここに "supabase_schema.sql" コードを貼り付けます',
+            'zh': '1. 在此处粘贴 "supabase_schema.sql" 代码',
+            'ja': '1. ここに "supabase_schema.sql" コードを貼り付け',
         },
         'step2': {
+            'tr': '2. Çalıştırmak için "Run" butonuna tıklayın',
             'en': '2. Click "Run" to execute',
-            'de': '2. Auf "Run" (Ausführen) klicken',
+            'de': '2. Auf "Run" klicken',
             'ru': '2. Нажмите "Run" для выполнения',
             'es': '2. Haz clic en "Run" para ejecutar',
             'ar': '2. انقر فوق "Run" للتشغيل',
             'fr': '2. Cliquez sur "Run" pour exécuter',
             'pt': '2. Clique em "Run" para executar',
             'zh': '2. 点击 "Run" 执行',
-            'ja': '2. "Run"（実行）をクリックします',
+            'ja': '2. "Run" をクリックして実行',
         },
     },
 }
@@ -179,12 +181,11 @@ def draw_pill_badge(draw, x, y, text, font, border_color=(0, 240, 255), bg_color
     draw.text((x + pad_x + dot_space, y + pad_y - bbox[1] + 1), text, fill=text_color, font=font)
     return (x, y, w, h)
 
-def draw_callout_arrow(draw, start_pt, end_pt, color=(0, 240, 255), width=2):
+def draw_callout_arrow(draw, start_pt, end_pt, color=(0, 240, 255), width=3, head_len=11):
     draw.line([start_pt, end_pt], fill=color, width=width)
     dx = end_pt[0] - start_pt[0]
     dy = end_pt[1] - start_pt[1]
     angle = math.atan2(dy, dx)
-    head_len = 9
     head_angle = math.pi / 6
     p1 = end_pt
     p2 = (end_pt[0] - head_len * math.cos(angle - head_angle),
@@ -299,20 +300,23 @@ def process_supabase(lang):
     # Censor avatar top right: (990, 8, 1015, 33)
     censor_region(im, (990, 8, 1015, 33), blur_radius=8, fill_color=(15, 23, 42))
     
-    if lang == 'tr':
-        return im  # Turkish: Clean screenshot with censorship only!
-    
     draw = ImageDraw.Draw(im)
     font = get_font(13, lang)
     
-    # Step 1: SQL Editor Query Area Badge
+    # Step 1: SQL Editor Query Area Badge & Arrow pointing down into editor
     txt_step1 = ANNOTATIONS['supabase']['step1'][lang]
-    draw_pill_badge(draw, 185, 110, txt_step1, font, border_color=(0, 240, 255), pad_x=12, pad_y=6, dot_color=(0, 240, 255))
+    b1 = draw_pill_badge(draw, 200, 95, txt_step1, font, border_color=(0, 240, 255), pad_x=12, pad_y=6, dot_color=(0, 240, 255))
+    arrow1_x = b1[0] + b1[2] // 2
+    arrow1_y_start = b1[1] + b1[3] + 2
+    draw_callout_arrow(draw, (arrow1_x, arrow1_y_start), (arrow1_x, arrow1_y_start + 45), color=(0, 240, 255), width=3, head_len=11)
     
     # Step 2: Run Button Badge & Arrow pointing to Run button
     txt_step2 = ANNOTATIONS['supabase']['step2'][lang]
-    b2 = draw_pill_badge(draw, 680, 52, txt_step2, font, border_color=(16, 185, 129), pad_x=12, pad_y=6, dot_color=(16, 185, 129))
-    draw_callout_arrow(draw, (b2[0] + b2[2] + 4, b2[1] + b2[3] // 2), (940, 66), color=(16, 185, 129), width=2)
+    badge2_bbox = draw.textbbox((0, 0), txt_step2, font=font)
+    badge2_w = badge2_bbox[2] - badge2_bbox[0] + 12 * 2 + 14
+    b2_x = 910 - badge2_w
+    b2 = draw_pill_badge(draw, b2_x, 52, txt_step2, font, border_color=(16, 185, 129), pad_x=12, pad_y=6, dot_color=(16, 185, 129))
+    draw_callout_arrow(draw, (b2[0] + b2[2] + 4, b2[1] + b2[3] // 2), (942, 66), color=(16, 185, 129), width=3, head_len=11)
     
     return im
 
