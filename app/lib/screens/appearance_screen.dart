@@ -47,25 +47,43 @@ class AppearanceScreen extends StatelessWidget {
                         width: double.infinity,
                         child: SegmentedButton<String>(
                           showSelectedIcon: false,
-                          style: const ButtonStyle(
+                          style: ButtonStyle(
                             visualDensity: VisualDensity.compact,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            padding: const WidgetStatePropertyAll(
+                              EdgeInsets.symmetric(horizontal: 4),
+                            ),
                           ),
                           segments: [
                             ButtonSegment(
                               value: 'dark',
-                              icon: const Icon(Icons.dark_mode, size: 16),
-                              label: Text(provider.tr('settings_widget_dark')),
+                              icon: const Icon(Icons.dark_mode, size: 14),
+                              label: Text(
+                                provider.tr('settings_widget_dark'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11),
+                              ),
                             ),
                             ButtonSegment(
                               value: 'light',
-                              icon: const Icon(Icons.light_mode, size: 16),
-                              label: Text(provider.tr('settings_widget_light')),
+                              icon: const Icon(Icons.light_mode, size: 14),
+                              label: Text(
+                                provider.tr('settings_widget_light'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11),
+                              ),
                             ),
                             ButtonSegment(
                               value: 'system',
-                              icon: const Icon(Icons.settings_suggest, size: 16),
-                              label: Text(provider.tr('theme_system')),
+                              icon: const Icon(Icons.settings_suggest, size: 14),
+                              label: Text(
+                                provider.tr('theme_system'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11),
+                              ),
                             ),
                           ],
                           selected: {provider.widgetMode},
@@ -97,13 +115,18 @@ class AppearanceScreen extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        provider.tr('widget_opacity_title'),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                      Expanded(
+                        child: Text(
+                          provider.tr('widget_opacity_title'),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
+                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 2),
@@ -259,21 +282,43 @@ class AppearanceScreen extends StatelessWidget {
                         width: double.infinity,
                         child: SegmentedButton<ThemeMode>(
                           showSelectedIcon: false,
+                          style: ButtonStyle(
+                            visualDensity: VisualDensity.compact,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            padding: const WidgetStatePropertyAll(
+                              EdgeInsets.symmetric(horizontal: 4),
+                            ),
+                          ),
                           segments: [
                             ButtonSegment(
                               value: ThemeMode.dark,
-                              icon: const Icon(Icons.dark_mode, size: 16),
-                              label: Text(provider.tr('settings_widget_dark')),
+                              icon: const Icon(Icons.dark_mode, size: 14),
+                              label: Text(
+                                provider.tr('settings_widget_dark'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11),
+                              ),
                             ),
                             ButtonSegment(
                               value: ThemeMode.light,
-                              icon: const Icon(Icons.light_mode, size: 16),
-                              label: Text(provider.tr('settings_widget_light')),
+                              icon: const Icon(Icons.light_mode, size: 14),
+                              label: Text(
+                                provider.tr('settings_widget_light'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11),
+                              ),
                             ),
                             ButtonSegment(
                               value: ThemeMode.system,
-                              icon: const Icon(Icons.settings_suggest, size: 16),
-                              label: Text(provider.tr('theme_system')),
+                              icon: const Icon(Icons.settings_suggest, size: 14),
+                              label: Text(
+                                provider.tr('theme_system'),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontSize: 11),
+                              ),
                             ),
                           ],
                           selected: {provider.themeMode},
@@ -516,7 +561,9 @@ class AppearanceScreen extends StatelessWidget {
                     ),
                     const SizedBox(width: 5),
                     Text(
-                      isOnline ? provider.tr('online') : provider.tr('offline'),
+                      isOnline
+                          ? provider.tr('status_online')
+                          : provider.tr('status_offline'),
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
@@ -555,13 +602,18 @@ class AppearanceScreen extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '${provider.tr('last_heartbeat')}: 12:45',
-                style: TextStyle(
-                  fontSize: 11,
-                  color: brandColor,
+              Expanded(
+                child: Text(
+                  '${provider.tr('last_seen')}: 12:45',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: brandColor,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               Row(
                 children: [
                   Container(

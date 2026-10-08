@@ -2,6 +2,8 @@ name: Build AlertRox Android APK
 
 on:
   push:
+    branches:
+      - main
     tags:
       - "v*"
   workflow_dispatch:
@@ -52,6 +54,12 @@ jobs:
         working-directory: ./app
         run: flutter pub get
 
+      - name: Validate i18n & Run Unit Tests
+        working-directory: ./app
+        run: |
+          dart run scripts/check_i18n.dart
+          flutter test
+
       - name: Build APK (Release & Obfuscated)
         working-directory: ./app
         run: flutter build apk --release --obfuscate --split-debug-info=build/symbols
@@ -66,6 +74,7 @@ jobs:
           path: AlertRox.apk
 
       - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
@@ -74,21 +83,20 @@ jobs:
           prerelease: false
           files: AlertRox.apk
           body: |
-            ### 🚨 AlertRox ${{ github.ref_name }} — Android APK Yayınlandı!
-            
+            ### 🚨 AlertRox ${{ github.ref_name }} — Android Final Release
+
             Bu sürüm ile eklenen başlıca özellikler:
-            - 🛡️ **Güvenlik & RLS Mimarisi:** Hardcoded anahtarlar kaldırıldı, Row-Level Security ve şifrelenmiş depolama (EncryptedSharedPreferences) eklendi.
-            - 🔐 **APK Obfuscation & Keystore İmzalama:** Kod karartma ve üretim anahtarı desteği.
-            - 🔔 **Arka Plan Gözcü Servisi (Foreground Service):** Android'in uygulamayı uyutmasını engeller ve PC açılışlarını anında ses/titreşim ile bildirir.
-            - 🪟 **Saydam Mod (Glassmorphism):** iOS tarzı yarı saydam buzlu cam kart ve buton estetiği.
-            - 🎨 **Tema Özelleştirici & Canlı RGB Seçici:** 7 hazır renk paleti ve RGB slider'ları ile canlı renk seçimi.
-            - ⏱️ **24 Saatlik Kapatma Sayacı:** 10 saniyeden 24 saate kadar uzatılabilir sayaç ve 12 hazır çip.
-            - 🔒 **PC Kapatma İptal Kilidi:** PC başındaki kişinin kapatmayı iptal etmesini engelleme (Ayarlardan opsiyonel).
-            - 🌓 **Widget Tema Seçimi:** Widget'ı Aydınlık veya Karanlık mod olarak belirleyebilme.
-            - 👨‍💻 **Roxie GitHub Bağlantısı:** Ayarlar kısmından tek dokunuşla geliştirici profiline erişim.
+            - 📱 **Akıllı Giriş & Panodan Doldur:** .env formatını otomatik algılayan tek tıkla yapıştırma, ön ek temizleme ve kesintisiz oturum başlatma.
+            - 🖼️ **Uygulama İçi Medya Oynatıcı & Önizleme:** İndirme zorunluluğu olmadan fotoğrafları tam ekran inceleme (zoom/pan) ve 10 saniyelik ses kayıtlarını doğrudan uygulama içinde dinleme.
+            - ⚡ **Işık Hızında Tepki (Sub-500ms):** Ses denetimi ve uygulama başlatma/kapatma komutlarında anlık yoklama ve durum itme.
+            - 📦 **Kararlı Uygulama Yöneticisi:** Tarayıcı sekme motorları ve dil sunucuları filtrelendi; Java (TLauncher) yanlış tespitleri giderildi.
+            - 🔋 **Özelleştirilebilir Bildirim Tercihleri:** Açılış, Laptop Prizden Çekildi, Düşük Pil (%20) ve Kapanış bildirimlerini tek tek açıp kapatabilme.
+            - 📱 **Xiaomi / HyperOS Widget Düzeltmesi:** Yuvarlak köşe bozulması giderildi, canlı çevrimiçi/çevrimdışı durum renkleri sabitlendi.
+            - 🌐 **10 Dil Eksiksiz:** 220 anahtar, %100 tam çeviri ve RTL desteği.
+            - 🛡️ **Sıfır Toleranslı Güvenlik:** PostgreSQL RLS, EncryptedSharedPreferences ve parametrik güvenli süreç yönetimi.
             - 💡 **Açık Kaynak & Tamamen Ücretsiz**
             
-            - 👨‍💻 **Geliştirici:** Roxie
+            - 👨‍💻 **Geliştirici:** Roxie (@RoxieG11)
             
             #### 📲 Nasıl Kurulur?
             Aşağıdaki `AlertRox.apk` dosyasını telefonunuza doğrudan indirin ve açarak yükleyin.

@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import '../constants/translations.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -11,8 +12,14 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
 
   bool _initialized = false;
+  String _currentLang = 'tr';
 
-  Future<void> init() async {
+  void updateLanguage(String langCode) {
+    _currentLang = langCode;
+  }
+
+  Future<void> init([String? langCode]) async {
+    if (langCode != null) _currentLang = langCode;
     if (_initialized) return;
 
     if (!kIsWeb && Platform.isAndroid) {
@@ -37,19 +44,24 @@ class NotificationService {
           _notificationsPlugin.resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>();
 
-      const AndroidNotificationChannel statusChannel = AndroidNotificationChannel(
+      final statusName = AppTranslations.get('notif_channel_status_name', _currentLang);
+      final statusDesc = AppTranslations.get('notif_channel_status_desc', _currentLang);
+      final shutdownName = AppTranslations.get('notif_channel_shutdown_name', _currentLang);
+      final shutdownDesc = AppTranslations.get('notif_channel_shutdown_desc', _currentLang);
+
+      final AndroidNotificationChannel statusChannel = AndroidNotificationChannel(
         'alertrox_device_status',
-        'Cihaz Durum Bildirimleri',
-        description: 'Bilgisayar açıldığında ve çevrimiçi olduğunda gelen bildirimler',
+        statusName,
+        description: statusDesc,
         importance: Importance.max,
         playSound: true,
         enableVibration: true,
       );
 
-      const AndroidNotificationChannel shutdownChannel = AndroidNotificationChannel(
+      final AndroidNotificationChannel shutdownChannel = AndroidNotificationChannel(
         'alertrox_shutdown_status',
-        'Kapatma Bildirimleri',
-        description: 'Bilgisayar kapanırken gösterilen uyarılar',
+        shutdownName,
+        description: shutdownDesc,
         importance: Importance.high,
         playSound: true,
         enableVibration: true,
@@ -65,15 +77,19 @@ class NotificationService {
     }
   }
 
-  Future<void> showTestNotification() async {
+  Future<void> showTestNotification([String? langCode]) async {
     if (kIsWeb) return;
+    final lang = langCode ?? _currentLang;
+    final title = AppTranslations.get('notif_test_title', lang);
+    final body = AppTranslations.get('notif_test_body', lang);
+    final channelName = AppTranslations.get('notif_channel_status_name', lang);
+    final channelDesc = AppTranslations.get('notif_channel_status_desc', lang);
 
-    const AndroidNotificationDetails androidDetails =
+    final AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
       'alertrox_device_status',
-      'Cihaz Durum Bildirimleri',
-      channelDescription:
-          'Bilgisayar açıldığında ve çevrimiçi olduğunda gelen bildirimler',
+      channelName,
+      channelDescription: channelDesc,
       importance: Importance.max,
       priority: Priority.high,
       enableVibration: true,
@@ -81,28 +97,32 @@ class NotificationService {
       icon: '@mipmap/ic_launcher',
     );
 
-    const NotificationDetails details = NotificationDetails(
+    final NotificationDetails details = NotificationDetails(
       android: androidDetails,
-      linux: LinuxNotificationDetails(),
+      linux: const LinuxNotificationDetails(),
     );
 
     await _notificationsPlugin.show(
       id: 9999,
-      title: '🚨 AlertRox Bildirim Testi',
-      body: 'Tebrikler! Bildirim servisi, ses ve titreşim başarıyla çalışıyor.',
+      title: title,
+      body: body,
       notificationDetails: details,
     );
   }
 
-  Future<void> showDeviceOnlineNotification(String deviceName) async {
+  Future<void> showDeviceOnlineNotification(String deviceName, [String? langCode]) async {
     if (kIsWeb) return;
+    final lang = langCode ?? _currentLang;
+    final title = AppTranslations.get('notif_device_boot_title', lang).replaceAll('{device}', deviceName);
+    final body = AppTranslations.get('notif_device_boot_desc', lang);
+    final channelName = AppTranslations.get('notif_channel_status_name', lang);
+    final channelDesc = AppTranslations.get('notif_channel_status_desc', lang);
 
-    const AndroidNotificationDetails androidDetails =
+    final AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
       'alertrox_device_status',
-      'Cihaz Durum Bildirimleri',
-      channelDescription:
-          'Bilgisayar açıldığında ve çevrimiçi olduğunda gelen bildirimler',
+      channelName,
+      channelDescription: channelDesc,
       importance: Importance.max,
       priority: Priority.high,
       enableVibration: true,
@@ -110,41 +130,46 @@ class NotificationService {
       icon: '@mipmap/ic_launcher',
     );
 
-    const NotificationDetails details = NotificationDetails(
+    final NotificationDetails details = NotificationDetails(
       android: androidDetails,
-      linux: LinuxNotificationDetails(),
+      linux: const LinuxNotificationDetails(),
     );
 
     await _notificationsPlugin.show(
       id: 1001,
-      title: '💻 AlertRox: $deviceName Açıldı!',
-      body: 'Bilgisayarınız çevrimiçi oldu ve bağlantı kuruldu.',
+      title: title,
+      body: body,
       notificationDetails: details,
     );
   }
 
   Future<void> showShutdownWarningNotification(
-      String deviceName, int seconds) async {
+      String deviceName, int seconds, [String? langCode]) async {
     if (kIsWeb) return;
+    final lang = langCode ?? _currentLang;
+    final title = AppTranslations.get('notif_shutdown_warning_title', lang).replaceAll('{device}', deviceName);
+    final body = AppTranslations.get('notif_shutdown_seconds', lang).replaceAll('{seconds}', seconds.toString());
+    final channelName = AppTranslations.get('notif_channel_shutdown_name', lang);
+    final channelDesc = AppTranslations.get('notif_channel_shutdown_desc', lang);
 
-    const AndroidNotificationDetails androidDetails =
+    final AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
       'alertrox_shutdown_status',
-      'Kapatma Bildirimleri',
-      channelDescription: 'Bilgisayar kapanırken gösterilen uyarılar',
+      channelName,
+      channelDescription: channelDesc,
       importance: Importance.high,
       priority: Priority.high,
       icon: '@mipmap/ic_launcher',
     );
 
-    const NotificationDetails details = NotificationDetails(
+    final NotificationDetails details = NotificationDetails(
       android: androidDetails,
     );
 
     await _notificationsPlugin.show(
       id: 1002,
-      title: '⚠️ AlertRox: $deviceName Kapatılıyor',
-      body: 'Bilgisayarın kapanmasına son $seconds saniye.',
+      title: title,
+      body: body,
       notificationDetails: details,
     );
   }

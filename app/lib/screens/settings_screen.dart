@@ -102,29 +102,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _openGitHubProfile() async {
+    final provider = Provider.of<AppProvider>(context, listen: false);
     const url = 'https://github.com/RoxieG11';
     final uri = Uri.parse(url);
     try {
       final launched =
           await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!launched) {
-        await Clipboard.setData(const ClipboardData(text: url));
+        await Clipboard.setData(ClipboardData(text: url));
         if (mounted) {
+          final msg = provider.tr('clipboard_link_copied').replaceAll('{url}', url);
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Link panoya kopyalandı: $url'),
-              duration: Duration(seconds: 3),
+            SnackBar(
+              content: Text(msg),
+              duration: const Duration(seconds: 3),
             ),
           );
         }
       }
     } catch (_) {
-      await Clipboard.setData(const ClipboardData(text: url));
+      await Clipboard.setData(ClipboardData(text: url));
       if (mounted) {
+        final msg = provider.tr('clipboard_link_copied').replaceAll('{url}', url);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Link panoya kopyalandı: $url'),
-            duration: Duration(seconds: 3),
+          SnackBar(
+            content: Text(msg),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -347,43 +350,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       const SizedBox(width: 10),
                       if (_isIgnoringBattery)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 9, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: AppTheme.statusOnline
-                                .withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
+                        Flexible(
+                          flex: 0,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 9, vertical: 5),
+                            decoration: BoxDecoration(
                               color: AppTheme.statusOnline
-                                  .withValues(alpha: 0.4),
+                                  .withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: AppTheme.statusOnline
+                                    .withValues(alpha: 0.4),
+                              ),
                             ),
-                          ),
-                          child: Text(
-                            provider.tr('settings_battery_status_unrestricted'),
-                            style: const TextStyle(
-                              color: AppTheme.statusOnline,
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
+                            child: Text(
+                              provider.tr('settings_battery_status_unrestricted'),
+                              style: const TextStyle(
+                                color: AppTheme.statusOnline,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         )
                       else
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 10, vertical: 6),
-                          ),
-                          onPressed: () async {
-                            await FlutterForegroundTask
-                                .requestIgnoreBatteryOptimization();
-                            await Future.delayed(
-                                const Duration(milliseconds: 800));
-                            await _checkSystemPermissions();
-                          },
-                          child: Text(
-                            provider.tr('settings_battery_status_restricted'),
-                            style: const TextStyle(fontSize: 11),
+                        Flexible(
+                          flex: 0,
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 6),
+                            ),
+                            onPressed: () async {
+                              await FlutterForegroundTask
+                                  .requestIgnoreBatteryOptimization();
+                              await Future.delayed(
+                                  const Duration(milliseconds: 800));
+                              await _checkSystemPermissions();
+                            },
+                            child: Text(
+                              provider.tr('settings_battery_status_restricted'),
+                              style: const TextStyle(fontSize: 11),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ),
                     ],
@@ -429,19 +442,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ),
                       const SizedBox(width: 10),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 8),
-                        ),
-                        onPressed: () async {
-                          await FlutterForegroundTask
-                              .openIgnoreBatteryOptimizationSettings();
-                        },
-                        icon: const Icon(Icons.open_in_new, size: 14),
-                        label: Text(
-                          provider.tr('settings_open_system_settings'),
-                          style: const TextStyle(fontSize: 11),
+                      Flexible(
+                        flex: 0,
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
+                          ),
+                          onPressed: () async {
+                            await FlutterForegroundTask
+                                .openIgnoreBatteryOptimizationSettings();
+                          },
+                          icon: const Icon(Icons.open_in_new, size: 14),
+                          label: Text(
+                            provider.tr('settings_open_system_settings'),
+                            style: const TextStyle(fontSize: 10),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
                     ],
@@ -452,7 +470,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 20),
 
-          // ── 4. Güvenlik & Kapatma Ayarları ──
+          // ── 4. Bildirim Tercihleri ──
+          _buildSectionHeader(provider.tr('pref_notif_title')),
+          GlassCard(
+            child: Column(
+              children: [
+                SwitchListTile(
+                  secondary: const Icon(Icons.power_settings_new_rounded, color: AppTheme.statusOnline),
+                  title: Text(provider.tr('pref_notif_boot')),
+                  subtitle: Text(provider.tr('pref_notif_boot_desc')),
+                  value: provider.notifBootEnabled,
+                  onChanged: (val) => provider.setNotifBootEnabled(val),
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.power_off_rounded, color: AppTheme.statusOffline),
+                  title: Text(provider.tr('pref_notif_shutdown')),
+                  subtitle: Text(provider.tr('pref_notif_shutdown_desc')),
+                  value: provider.notifShutdownEnabled,
+                  onChanged: (val) => provider.setNotifShutdownEnabled(val),
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.power_input_rounded, color: AppTheme.statusWarning),
+                  title: Text(provider.tr('pref_notif_unplugged')),
+                  subtitle: Text(provider.tr('pref_notif_unplugged_desc')),
+                  value: provider.notifUnpluggedEnabled,
+                  onChanged: (val) => provider.setNotifUnpluggedEnabled(val),
+                ),
+                const Divider(height: 1),
+                SwitchListTile(
+                  secondary: const Icon(Icons.battery_alert_rounded, color: Colors.orangeAccent),
+                  title: Text(provider.tr('pref_notif_low_battery')),
+                  subtitle: Text(provider.tr('pref_notif_low_battery_desc')),
+                  value: provider.notifLowBatteryEnabled,
+                  onChanged: (val) => provider.setNotifLowBatteryEnabled(val),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── 5. Güvenlik & Kapatma Ayarları ──
           _buildSectionHeader(provider.tr('settings_security_shutdown')),
           GlassCard(
             child: SwitchListTile(
@@ -709,7 +768,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'AlertRox v1.5.0 • Open Source Security',
+                    'AlertRox v1.5.2 • Open Source Security',
                     style: TextStyle(
                       fontSize: 11,
                       color: Theme.of(context)
@@ -742,3 +801,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 }
+

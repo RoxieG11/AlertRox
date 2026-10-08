@@ -65,7 +65,31 @@ class WatchdogTaskHandler extends TaskHandler {
         enableVibration: true,
       );
 
+      const AndroidNotificationChannel shutdownChannel =
+          AndroidNotificationChannel(
+        'alertrox_shutdown_status',
+        'Kapatma Bildirimleri',
+        description:
+            'Bilgisayar kapandığında veya çevrimdışı olduğunda gelen bildirimler',
+        importance: Importance.high,
+        playSound: true,
+        enableVibration: true,
+      );
+
+      const AndroidNotificationChannel powerChannel =
+          AndroidNotificationChannel(
+        'alertrox_power_channel',
+        'Güç ve Pil Bildirimleri',
+        description:
+            'Laptop şarjdan çekildiğinde veya pil azaldığında gönderilen acil bildirimler',
+        importance: Importance.max,
+        playSound: true,
+        enableVibration: true,
+      );
+
       await androidImplementation?.createNotificationChannel(statusChannel);
+      await androidImplementation?.createNotificationChannel(shutdownChannel);
+      await androidImplementation?.createNotificationChannel(powerChannel);
     } catch (_) {
       // Graceful error handling - never crash isolate
     }
@@ -144,9 +168,21 @@ class WatchdogTaskHandler extends TaskHandler {
             ((wasOnline == false) || (wasOnline == null && isRecentBoot)) &&
             (lastNotifiedBoot != currentBootId);
 
+        final notifBootEnabled = prefs.getBool('pref_notif_boot') ?? true;
+        final notifShutdownEnabled = prefs.getBool('pref_notif_shutdown') ?? true;
+        final notifUnpluggedEnabled = prefs.getBool('pref_notif_unplugged') ?? true;
+        final notifLowBatteryEnabled = prefs.getBool('pref_notif_low_battery') ?? true;
+
         if (shouldNotify) {
-          await _showDeviceOnlineNotification(devName);
+          if (notifBootEnabled) {
+            await _showDeviceOnlineNotification(devName);
+          }
           await prefs.setString(lastNotifiedBootKey, currentBootId);
+        }
+
+        // Cihaz kapandığında veya çevrimdışı olduğunda bildirim gönder
+        if (wasOnline == true && !isOnlineNow && notifShutdownEnabled) {
+          await _showDeviceShutdownNotification(devName);
         }
 
         await prefs.setBool(prevOnlineKey, isOnlineNow);
@@ -182,17 +218,22 @@ class WatchdogTaskHandler extends TaskHandler {
               }
 
               if (isFresh) {
-                if (evType == 'power_unplugged') {
+                final langCode = prefs.getString('app_language') ?? 'tr';
+                if (evType == 'power_unplugged' && notifUnpluggedEnabled) {
+                  final title = AppTranslations.get('notif_power_unplugged_title', langCode).replaceAll('{device}', devName);
+                  final body = msg.isNotEmpty ? msg : AppTranslations.get('notif_power_unplugged_desc', langCode);
                   await _showPowerNotification(
                     id: 2001,
-                    title: '⚡ AlertRox: $devName Şarjdan Çekildi!',
-                    body: msg.isNotEmpty ? msg : 'Laptop prizden çekildi, pille çalışıyor.',
+                    title: title,
+                    body: body,
                   );
-                } else if (evType == 'battery_critical_low') {
+                } else if (evType == 'battery_critical_low' && notifLowBatteryEnabled) {
+                  final title = AppTranslations.get('notif_battery_low_title', langCode);
+                  final body = msg.isNotEmpty ? msg : AppTranslations.get('notif_battery_low_desc', langCode).replaceAll('{device}', devName);
                   await _showPowerNotification(
                     id: 2002,
-                    title: '🚨 AlertRox: Kritik Düşük Pil Uyarısı!',
-                    body: msg.isNotEmpty ? msg : '$devName pili %20 altına düştü! Lütfen şarja takın.',
+                    title: title,
+                    body: body,
                   );
                 }
               }
@@ -303,6 +344,9 @@ class WatchdogTaskHandler extends TaskHandler {
   }
 
   Future<void> _showDeviceOnlineNotification(String deviceName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final langCode = prefs.getString('app_language') ?? 'tr';
+
     const AndroidNotificationDetails androidDetails =
         AndroidNotificationDetails(
       'alertrox_device_status',
@@ -316,10 +360,41 @@ class WatchdogTaskHandler extends TaskHandler {
       icon: '@mipmap/ic_launcher',
     );
 
+    final title = AppTranslations.get('notif_device_boot_title', langCode).replaceAll('{device}', deviceName);
+    final body = AppTranslations.get('notif_device_boot_desc', langCode);
+
     await _notificationsPlugin?.show(
       id: 1001,
-      title: '💻 AlertRox: $deviceName Açıldı!',
-      body: 'Bilgisayarınız çevrimiçi oldu ve bağlantı kuruldu.',
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(android: androidDetails),
+    );
+  }
+
+  Future<void> _showDeviceShutdownNotification(String deviceName) async {
+    final prefs = await SharedPreferences.getInstance();
+    final langCode = prefs.getString('app_language') ?? 'tr';
+
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+      'alertrox_shutdown_status',
+      'Kapatma Bildirimleri',
+      channelDescription:
+          'Bilgisayar kapandığında veya çevrimdışı olduğunda gelen bildirimler',
+      importance: Importance.high,
+      priority: Priority.high,
+      enableVibration: true,
+      playSound: true,
+      icon: '@mipmap/ic_launcher',
+    );
+
+    final title = AppTranslations.get('notif_pc_shutdown_title', langCode).replaceAll('{device}', deviceName);
+    final body = AppTranslations.get('notif_pc_shutdown_desc', langCode);
+
+    await _notificationsPlugin?.show(
+      id: 1003,
+      title: title,
+      body: body,
       notificationDetails: const NotificationDetails(android: androidDetails),
     );
   }
@@ -394,10 +469,15 @@ class AlertRoxForegroundService {
       if (await FlutterForegroundTask.isRunningService) return true;
 
       // 3. Start foreground service with specialUse type for Android 14/15 compatibility
+      final prefs = await SharedPreferences.getInstance();
+      final langCode = prefs.getString('app_language') ?? 'tr';
+      final watchdogTitle = AppTranslations.get('notif_watchdog_title', langCode);
+      final watchdogDesc = AppTranslations.get('notif_watchdog_desc', langCode);
+
       final result = await FlutterForegroundTask.startService(
         serviceId: 256,
-        notificationTitle: 'AlertRox Gözcü Aktif',
-        notificationText: 'PC açılışı ve bağlantı durumu izleniyor',
+        notificationTitle: watchdogTitle,
+        notificationText: watchdogDesc,
         serviceTypes: [ForegroundServiceTypes.specialUse],
         callback: startCallback,
       );

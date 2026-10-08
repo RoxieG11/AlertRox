@@ -77,19 +77,26 @@ class SupabaseService {
   }) async {
     final cleanUrl = url.trim();
     final cleanKey = anonKey.trim();
+    final cleanEmail = email.trim();
+    final cleanPassword = password.trim();
 
-    if (!_isInitialized) {
-      await Supabase.initialize(
-        url: cleanUrl,
-        anonKey: cleanKey,
-        debug: kDebugMode,
-      );
-      _isInitialized = true;
+    if (_isInitialized) {
+      try {
+        await Supabase.instance.dispose();
+      } catch (_) {}
+      _isInitialized = false;
     }
 
+    await Supabase.initialize(
+      url: cleanUrl,
+      anonKey: cleanKey,
+      debug: kDebugMode,
+    );
+    _isInitialized = true;
+
     final response = await client.auth.signInWithPassword(
-      email: email.trim(),
-      password: password,
+      email: cleanEmail,
+      password: cleanPassword,
     );
 
     if (response.session != null) {
@@ -149,6 +156,29 @@ class SupabaseService {
         .stream(primaryKey: ['id'])
         .order('last_heartbeat', ascending: false);
   }
+
+  Future<Map<String, dynamic>?> getDeviceState(String deviceId) async {
+    try {
+      final res = await client
+          .from('device_state')
+          .select()
+          .eq('device_id', deviceId)
+          .maybeSingle();
+      return res != null ? Map<String, dynamic>.from(res) : null;
+    } catch (e) {
+      debugPrint('Error getting device state: $e');
+      return null;
+    }
+  }
+
+  Stream<Map<String, dynamic>?> streamDeviceState(String deviceId) {
+    return client
+        .from('device_state')
+        .stream(primaryKey: ['device_id'])
+        .eq('device_id', deviceId)
+        .map((list) => list.isNotEmpty ? Map<String, dynamic>.from(list.first) : null);
+  }
+
 
   // Commands API
   Future<Map<String, dynamic>> sendCommand(String deviceId, String commandType,

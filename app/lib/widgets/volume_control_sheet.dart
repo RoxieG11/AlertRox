@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../providers/app_provider.dart';
 import '../services/supabase_service.dart';
@@ -30,12 +31,60 @@ class _VolumeControlSheetState extends State<VolumeControlSheet> {
   double _volume = 50.0;
   bool _isMuted = false;
   bool _isSending = false;
+  Timer? _debounceTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialState();
+  }
+
+  @override
+  void dispose() {
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadInitialState() async {
+    try {
+      final state = await SupabaseService().getDeviceState(widget.targetId);
+      if (state != null && mounted) {
+        setState(() {
+          final volVal = state['volume'];
+          if (volVal is num) {
+            _volume = volVal.toDouble().clamp(0.0, 100.0);
+          }
+          if (state['muted'] is bool) {
+            _isMuted = state['muted'] as bool;
+          }
+        });
+      }
+    } catch (_) {}
+  }
 
   Future<void> _setVolume(double val) async {
     setState(() => _volume = val);
     try {
       await SupabaseService().sendCommand(widget.targetId, 'set_volume', {
-        'volume': val.toInt(),
+        'volume': val.toInt().clamp(0, 100),
+      });
+    } catch (_) {}
+  }
+
+  void _onSliderChanged(double val) {
+    setState(() => _volume = val);
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 200), () {
+      _setVolume(val);
+    });
+  }
+
+  Future<void> _stepVolume(int delta) async {
+    final next = (_volume + delta).clamp(0.0, 100.0);
+    setState(() => _volume = next);
+    try {
+      await SupabaseService().sendCommand(widget.targetId, 'volume_step', {
+        'delta': delta,
       });
     } catch (_) {}
   }
@@ -130,10 +179,14 @@ class _VolumeControlSheetState extends State<VolumeControlSheet> {
           ),
           const SizedBox(height: 24),
 
-          // Volume Slider
+          // Volume Slider + Step Buttons
           Row(
             children: [
-              const Icon(Icons.volume_mute, size: 20, color: AppTheme.darkTextMuted),
+              IconButton(
+                icon: const Icon(Icons.remove_circle_outline, color: AppTheme.darkTextMuted),
+                tooltip: widget.provider.tr('vol_step_down'),
+                onPressed: () => _stepVolume(-5),
+              ),
               Expanded(
                 child: Slider(
                   value: _volume,
@@ -143,13 +196,15 @@ class _VolumeControlSheetState extends State<VolumeControlSheet> {
                   activeColor: AppTheme.primaryTeal,
                   inactiveColor: isDark ? const Color(0xFF1E293B) : const Color(0xFFE2E8F0),
                   label: '${_volume.toInt()}%',
-                  onChanged: (val) {
-                    setState(() => _volume = val);
-                  },
+                  onChanged: _onSliderChanged,
                   onChangeEnd: _setVolume,
                 ),
               ),
-              const Icon(Icons.volume_up, size: 20, color: AppTheme.primaryTeal),
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline, color: AppTheme.primaryTeal),
+                tooltip: widget.provider.tr('vol_step_up'),
+                onPressed: () => _stepVolume(5),
+              ),
             ],
           ),
           const SizedBox(height: 20),

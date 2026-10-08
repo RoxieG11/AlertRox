@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../services/supabase_service.dart';
 import '../constants/theme.dart';
+import '../constants/translations.dart';
 import '../widgets/glass_card.dart';
 import 'main_navigation_screen.dart';
 
@@ -42,6 +44,94 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  String _cleanInput(String val, [String? prefix]) {
+    var s = val.trim();
+    if (prefix != null && s.toUpperCase().startsWith(prefix.toUpperCase())) {
+      s = s.substring(prefix.length).trim();
+      if (s.startsWith('=')) s = s.substring(1).trim();
+    }
+    // Remove surrounding quotes
+    if ((s.startsWith('"') && s.endsWith('"')) || (s.startsWith("'") && s.endsWith("'"))) {
+      if (s.length >= 2) s = s.substring(1, s.length - 1).trim();
+    }
+    return s;
+  }
+
+  void _parseAndFillEnv(String raw) {
+    final lines = raw.split(RegExp(r'[\r\n]+'));
+    String? foundUrl;
+    String? foundKey;
+    String? foundEmail;
+    String? foundPassword;
+
+    for (var line in lines) {
+      line = line.trim();
+      if (line.isEmpty || line.startsWith('#')) continue;
+
+      final eqIndex = line.indexOf('=');
+      if (eqIndex != -1) {
+        final k = line.substring(0, eqIndex).trim().toUpperCase();
+        var v = line.substring(eqIndex + 1).trim();
+        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
+          if (v.length >= 2) v = v.substring(1, v.length - 1).trim();
+        }
+        if (k == 'SUPABASE_URL' || k == 'URL') {
+          foundUrl = v;
+        } else if (k == 'SUPABASE_ANON_KEY' || k == 'SUPABASE_KEY' || k == 'ANON_KEY' || k == 'KEY') {
+          foundKey = v;
+        } else if (k == 'AGENT_EMAIL' || k == 'EMAIL') {
+          foundEmail = v;
+        } else if (k == 'AGENT_PASSWORD' || k == 'PASSWORD') {
+          foundPassword = v;
+        }
+      }
+    }
+
+    setState(() {
+      if (foundUrl != null && foundUrl.isNotEmpty) _urlController.text = foundUrl;
+      if (foundKey != null && foundKey.isNotEmpty) _keyController.text = foundKey;
+      if (foundEmail != null && foundEmail.isNotEmpty) _emailController.text = foundEmail;
+      if (foundPassword != null && foundPassword.isNotEmpty) _passwordController.text = foundPassword;
+    });
+  }
+
+  Future<void> _pasteFromClipboard() async {
+    final lang = Provider.of<AppProvider>(context, listen: false).currentLanguage;
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = data?.text?.trim();
+      if (text == null || text.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppTranslations.get('login_clipboard_empty', lang))),
+          );
+        }
+        return;
+      }
+
+      if (text.contains('=') && (text.contains('SUPABASE') || text.contains('AGENT') || text.contains('\n'))) {
+        _parseAndFillEnv(text);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppTranslations.get('login_clipboard_success', lang))),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(AppTranslations.get('login_clipboard_not_found', lang))),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Pano okunamadı: $e')),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _urlController.dispose();
@@ -52,6 +142,11 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
+    _urlController.text = _cleanInput(_urlController.text, 'SUPABASE_URL');
+    _keyController.text = _cleanInput(_keyController.text, 'SUPABASE_ANON_KEY');
+    _emailController.text = _cleanInput(_emailController.text, 'AGENT_EMAIL');
+    _passwordController.text = _cleanInput(_passwordController.text, 'AGENT_PASSWORD');
+
     if (!_formKey.currentState!.validate()) return;
 
     setState(() {
@@ -65,7 +160,7 @@ class _LoginScreenState extends State<LoginScreen> {
         url: _urlController.text.trim(),
         anonKey: _keyController.text.trim(),
         email: _emailController.text.trim(),
-        password: _passwordController.text,
+        password: _passwordController.text.trim(),
       );
 
       if (success && mounted) {
@@ -184,24 +279,49 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Supabase Bağlantısı',
-                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Supabase Bağlantısı',
+                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                              ),
+                              TextButton.icon(
+                                onPressed: _pasteFromClipboard,
+                                icon: const Icon(Icons.paste_rounded, size: 16),
+                                label: Text(
+                                  AppTranslations.get('login_paste_clipboard', provider.currentLanguage),
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                                style: TextButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                ),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           TextFormField(
                             controller: _urlController,
                             keyboardType: TextInputType.url,
+                            onChanged: (val) {
+                              if (val.contains('SUPABASE_ANON_KEY') ||
+                                  val.contains('AGENT_EMAIL') ||
+                                  val.contains('\n')) {
+                                _parseAndFillEnv(val);
+                              }
+                            },
                             decoration: const InputDecoration(
                               labelText: 'Supabase URL',
                               hintText: 'https://xxxx.supabase.co',
                               prefixIcon: Icon(Icons.link),
                             ),
                             validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
+                              final cleaned = _cleanInput(val ?? '', 'SUPABASE_URL');
+                              if (cleaned.isEmpty) {
                                 return 'Supabase URL gereklidir';
                               }
-                              if (!val.startsWith('http://') && !val.startsWith('https://')) {
+                              if (!cleaned.startsWith('http://') && !cleaned.startsWith('https://')) {
                                 return 'Geçerli bir URL girin (https://...)';
                               }
                               return null;
@@ -224,7 +344,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
+                              final cleaned = _cleanInput(val ?? '', 'SUPABASE_ANON_KEY');
+                              if (cleaned.isEmpty) {
                                 return 'Supabase Anon Key gereklidir';
                               }
                               return null;
@@ -247,10 +368,11 @@ class _LoginScreenState extends State<LoginScreen> {
                               prefixIcon: Icon(Icons.email_outlined),
                             ),
                             validator: (val) {
-                              if (val == null || val.trim().isEmpty) {
+                              final cleaned = _cleanInput(val ?? '', 'AGENT_EMAIL');
+                              if (cleaned.isEmpty) {
                                 return 'E-posta adresi gereklidir';
                               }
-                              if (!val.contains('@')) {
+                              if (!cleaned.contains('@')) {
                                 return 'Geçerli bir e-posta adresi girin';
                               }
                               return null;
@@ -272,7 +394,8 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                             ),
                             validator: (val) {
-                              if (val == null || val.isEmpty) {
+                              final cleaned = _cleanInput(val ?? '', 'AGENT_PASSWORD');
+                              if (cleaned.isEmpty) {
                                 return 'Şifre gereklidir';
                               }
                               return null;

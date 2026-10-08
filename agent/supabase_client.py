@@ -149,6 +149,20 @@ class AlertRoxClient:
         )
         return result.data[0] if result.data else None
 
+    def update_device_state(self, state: dict) -> None:
+        """Cihaz anlık durumunu (ses, mute, pano hash, uygulamalar) device_state tablosuna yazar."""
+        self.ensure_authenticated()
+        try:
+            data = {
+                "device_id": self.device_id,
+                "owner_id": self.user_id,
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+                **state,
+            }
+            self.client.table("device_state").upsert(data, on_conflict="device_id").execute()
+        except Exception:
+            pass
+
     # ─────────────────────────────────────────
     # Komut İşlemleri (commands tablosu)
     # ─────────────────────────────────────────

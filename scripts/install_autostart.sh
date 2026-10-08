@@ -15,7 +15,7 @@ echo "Proje Dizini: $PROJECT_DIR"
 echo "Python: $PYTHON_EXEC"
 
 if [ ! -f "$PYTHON_EXEC" ]; then
-    echo "❌ HATA: venv bulunamadı! Lütfen önce 'python -m venv venv' yapın."
+    echo "❌ HATA: venv bulunamadı! Lütfen önce 'python -m venv venv && ./venv/bin/pip install -r requirements.txt' yapın."
     exit 1
 fi
 
@@ -55,8 +55,11 @@ echo ""
 echo "🎉 TEBRİKLER! AlertRox artık bilgisayarın her açılışında arka planda OTOMATİK çalışacak!"
 echo ""
 echo "Servis durumunu kontrol etmek için:"
-echo "  systemctl --user status alertrox.service"
+echo "  ./scripts/alertrox-status.sh"
+echo "  veya: systemctl --user status alertrox.service"
 echo ""
 echo "Durdurmak için:"
 echo "  systemctl --user stop alertrox.service"
+echo "Yeniden başlatmak için:"
+echo "  systemctl --user restart alertrox.service"
 echo "============================================="

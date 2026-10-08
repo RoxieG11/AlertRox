@@ -23,6 +23,12 @@ class AppProvider extends ChangeNotifier {
   static const String prefWidgetAccent = 'widget_accent';
   static const String prefWidgetSecondary = 'widget_secondary';
 
+  // Individual notification preferences
+  static const String prefNotifBoot = 'pref_notif_boot';
+  static const String prefNotifUnplugged = 'pref_notif_unplugged';
+  static const String prefNotifLowBattery = 'pref_notif_low_battery';
+  static const String prefNotifShutdown = 'pref_notif_shutdown';
+
   String _currentLanguage = 'tr';
   ThemeMode _themeMode = ThemeMode.dark;
   Color _accentColor = const Color(0xFF00F0FF);
@@ -31,6 +37,12 @@ class AppProvider extends ChangeNotifier {
   bool _allowPcCancel = false;
   String _widgetTheme = 'dark';
   bool _foregroundServiceEnabled = true;
+
+  // Notification toggles
+  bool _notifBootEnabled = true;
+  bool _notifUnpluggedEnabled = true;
+  bool _notifLowBatteryEnabled = true;
+  bool _notifShutdownEnabled = true;
 
   // Widget appearance state
   String _widgetMode = 'dark'; // 'dark', 'light', 'system'
@@ -48,6 +60,7 @@ class AppProvider extends ChangeNotifier {
   final Map<String, bool> _previousOnlineState = {};
   final Set<String> _notifiedBootDeviceIds = {};
   StreamSubscription? _deviceSubscription;
+  StreamSubscription? _deviceStateSubscription;
   Timer? _periodicEvaluationTimer;
 
   String get currentLanguage => _currentLanguage;
@@ -66,6 +79,11 @@ class AppProvider extends ChangeNotifier {
   Color get widgetAccentColor => _widgetAccentColor;
   Color get widgetSecondaryColor => _widgetSecondaryColor;
 
+  bool get notifBootEnabled => _notifBootEnabled;
+  bool get notifUnpluggedEnabled => _notifUnpluggedEnabled;
+  bool get notifLowBatteryEnabled => _notifLowBatteryEnabled;
+  bool get notifShutdownEnabled => _notifShutdownEnabled;
+
   Map<String, dynamic>? get selectedDevice => _selectedDevice;
   List<Map<String, dynamic>> get devices => _devices;
   bool get isLoading => _isLoading;
@@ -77,6 +95,7 @@ class AppProvider extends ChangeNotifier {
   @override
   void dispose() {
     _deviceSubscription?.cancel();
+    _deviceStateSubscription?.cancel();
     _periodicEvaluationTimer?.cancel();
     super.dispose();
   }
@@ -130,7 +149,12 @@ class AppProvider extends ChangeNotifier {
         _widgetSecondaryColor = Color(savedWidgetSecondary);
       }
 
-      await NotificationService().init();
+      _notifBootEnabled = prefs.getBool(prefNotifBoot) ?? true;
+      _notifUnpluggedEnabled = prefs.getBool(prefNotifUnplugged) ?? true;
+      _notifLowBatteryEnabled = prefs.getBool(prefNotifLowBattery) ?? true;
+      _notifShutdownEnabled = prefs.getBool(prefNotifShutdown) ?? true;
+
+      await NotificationService().init(_currentLanguage);
 
       // Check Supabase authentication
       _isAuthenticated = await SupabaseService().initialize();
@@ -209,6 +233,7 @@ class AppProvider extends ChangeNotifier {
 
     try {
       _deviceSubscription?.cancel();
+      _deviceStateSubscription?.cancel();
       _periodicEvaluationTimer?.cancel();
       await AlertRoxForegroundService.stop();
       await SupabaseService().signOut();
@@ -239,8 +264,20 @@ class AppProvider extends ChangeNotifier {
           _selectedDevice = _devices.first;
         }
 
+        final targetId = (_selectedDevice?['device_id'] ?? _selectedDevice?['id'])?.toString();
+        if (targetId != null && targetId.isNotEmpty) {
+          _subscribeToDeviceState(targetId);
+        }
+
         _evaluateOnlineStates();
       }
+    });
+  }
+
+  void _subscribeToDeviceState(String deviceId) {
+    _deviceStateSubscription?.cancel();
+    _deviceStateSubscription = SupabaseService().streamDeviceState(deviceId).listen((state) {
+      // Device state updates
     });
   }
 
@@ -320,6 +357,7 @@ class AppProvider extends ChangeNotifier {
 
   Future<void> setLanguage(String langCode) async {
     _currentLanguage = langCode;
+    NotificationService().updateLanguage(langCode);
     notifyListeners();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(prefLanguage, langCode);
@@ -425,6 +463,34 @@ class AppProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> setNotifBootEnabled(bool enabled) async {
+    _notifBootEnabled = enabled;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(prefNotifBoot, enabled);
+  }
+
+  Future<void> setNotifUnpluggedEnabled(bool enabled) async {
+    _notifUnpluggedEnabled = enabled;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(prefNotifUnplugged, enabled);
+  }
+
+  Future<void> setNotifLowBatteryEnabled(bool enabled) async {
+    _notifLowBatteryEnabled = enabled;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(prefNotifLowBattery, enabled);
+  }
+
+  Future<void> setNotifShutdownEnabled(bool enabled) async {
+    _notifShutdownEnabled = enabled;
+    notifyListeners();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(prefNotifShutdown, enabled);
+  }
+
   void setSelectedDevice(Map<String, dynamic>? device) {
     _selectedDevice = device;
     notifyListeners();
@@ -433,6 +499,9 @@ class AppProvider extends ChangeNotifier {
       SharedPreferences.getInstance().then((prefs) {
         prefs.setString('selected_device_id', id);
       });
+      _subscribeToDeviceState(id);
+    } else {
+      _deviceStateSubscription?.cancel();
     }
     _pushWidgetUpdate();
   }
@@ -450,6 +519,11 @@ class AppProvider extends ChangeNotifier {
           _selectedDevice = found;
         } else {
           _selectedDevice = _devices.first;
+        }
+
+        final targetId = (_selectedDevice?['device_id'] ?? _selectedDevice?['id'])?.toString();
+        if (targetId != null && targetId.isNotEmpty) {
+          _subscribeToDeviceState(targetId);
         }
 
         _evaluateOnlineStates();

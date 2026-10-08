@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:audioplayers/audioplayers.dart';
 import '../providers/app_provider.dart';
 import '../services/supabase_service.dart';
 import '../services/media_saver_service.dart';
@@ -99,6 +100,7 @@ class _MediaScreenState extends State<MediaScreen> {
   }
 
   Future<void> _openUrl(String url) async {
+    final provider = Provider.of<AppProvider>(context, listen: false);
     final uri = Uri.parse(url);
     try {
       final launched =
@@ -106,9 +108,10 @@ class _MediaScreenState extends State<MediaScreen> {
       if (!launched) {
         await Clipboard.setData(ClipboardData(text: url));
         if (mounted) {
+          final msg = provider.tr('clipboard_link_copied').replaceAll('{url}', url);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Link panoya kopyalandı: $url'),
+              content: Text(msg),
               duration: const Duration(seconds: 3),
             ),
           );
@@ -117,9 +120,10 @@ class _MediaScreenState extends State<MediaScreen> {
     } catch (_) {
       await Clipboard.setData(ClipboardData(text: url));
       if (mounted) {
+        final msg = provider.tr('clipboard_link_copied').replaceAll('{url}', url);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Link panoya kopyalandı: $url'),
+            content: Text(msg),
             duration: const Duration(seconds: 3),
           ),
         );
@@ -170,43 +174,11 @@ class _MediaScreenState extends State<MediaScreen> {
     }
   }
 
-  void _showImageDialog(String name, String url) {
-    showDialog(
-      context: context,
-      builder: (ctx) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.all(12),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Align(
-              alignment: Alignment.topRight,
-              child: IconButton(
-                icon: const Icon(Icons.close, color: Colors.white, size: 28),
-                onPressed: () => Navigator.pop(ctx),
-              ),
-            ),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                url,
-                fit: BoxFit.contain,
-                loadingBuilder: (context, child, progress) {
-                  if (progress == null) return child;
-                  return const Padding(
-                    padding: EdgeInsets.all(40),
-                    child: CircularProgressIndicator(),
-                  );
-                },
-                errorBuilder: (context, error, stack) => const Padding(
-                  padding: EdgeInsets.all(40),
-                  child: Text('Failed to load image',
-                      style: TextStyle(color: Colors.white)),
-                ),
-              ),
-            ),
-          ],
-        ),
+  void _showFullScreenImage(String name, String url) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FullScreenImageViewer(imageUrl: url, title: name),
       ),
     );
   }
@@ -289,7 +261,7 @@ class _MediaScreenState extends State<MediaScreen> {
                           children: [
                             if (isImage && url.isNotEmpty)
                               GestureDetector(
-                                onTap: () => _showImageDialog(name, url),
+                                onTap: () => _showFullScreenImage(name, url),
                                 child: Container(
                                   height: 220,
                                   width: double.infinity,
@@ -318,30 +290,9 @@ class _MediaScreenState extends State<MediaScreen> {
                                 ),
                               )
                             else if (isAudio)
-                              Container(
-                                height: 110,
-                                width: double.infinity,
-                                color: AppTheme.accentCyan.withValues(alpha: 0.1),
-                                child: const Center(
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.mic,
-                                        size: 44,
-                                        color: AppTheme.accentCyan,
-                                      ),
-                                      SizedBox(width: 12),
-                                      Text(
-                                        '10s Audio Recording',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                              AudioRecordingPlayer(
+                                audioUrl: url,
+                                title: name,
                               ),
                             Padding(
                               padding: const EdgeInsets.all(14),
@@ -404,11 +355,11 @@ class _MediaScreenState extends State<MediaScreen> {
                                       children: [
                                         if (isImage)
                                           IconButton(
-                                            tooltip: provider.tr('media_open'),
+                                            tooltip: provider.tr('media_fullscreen'),
                                             icon: const Icon(Icons.fullscreen,
                                                 size: 22),
                                             onPressed: () =>
-                                                _showImageDialog(name, url),
+                                                _showFullScreenImage(name, url),
                                           ),
                                         ElevatedButton.icon(
                                           onPressed: isDownloading
@@ -439,7 +390,7 @@ class _MediaScreenState extends State<MediaScreen> {
                                         ),
                                         const SizedBox(width: 4),
                                         IconButton(
-                                          tooltip: 'Browser',
+                                          tooltip: provider.tr('media_open'),
                                           icon: const Icon(Icons.open_in_browser,
                                               size: 20),
                                           onPressed: () => _openUrl(url),
@@ -468,3 +419,198 @@ class _MediaScreenState extends State<MediaScreen> {
     }
   }
 }
+
+class FullScreenImageViewer extends StatelessWidget {
+  final String imageUrl;
+  final String title;
+
+  const FullScreenImageViewer({
+    super.key,
+    required this.imageUrl,
+    required this.title,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black.withValues(alpha: 0.8),
+        foregroundColor: Colors.white,
+        title: Text(
+          title,
+          style: const TextStyle(fontSize: 14),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      body: Center(
+        child: InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 4.0,
+          clipBehavior: Clip.none,
+          child: Image.network(
+            imageUrl,
+            fit: BoxFit.contain,
+            loadingBuilder: (context, child, progress) {
+              if (progress == null) return child;
+              return const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              );
+            },
+            errorBuilder: (context, error, stack) => const Center(
+              child: Icon(
+                Icons.broken_image,
+                size: 64,
+                color: Colors.white54,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class AudioRecordingPlayer extends StatefulWidget {
+  final String audioUrl;
+  final String title;
+
+  const AudioRecordingPlayer({
+    super.key,
+    required this.audioUrl,
+    required this.title,
+  });
+
+  @override
+  State<AudioRecordingPlayer> createState() => _AudioRecordingPlayerState();
+}
+
+class _AudioRecordingPlayerState extends State<AudioRecordingPlayer> {
+  late final AudioPlayer _player;
+  PlayerState _state = PlayerState.stopped;
+  Duration _duration = const Duration(seconds: 10);
+  Duration _position = Duration.zero;
+
+  @override
+  void initState() {
+    super.initState();
+    _player = AudioPlayer();
+    _player.onPlayerStateChanged.listen((s) {
+      if (mounted) setState(() => _state = s);
+    });
+    _player.onDurationChanged.listen((d) {
+      if (mounted) setState(() => _duration = d);
+    });
+    _player.onPositionChanged.listen((p) {
+      if (mounted) setState(() => _position = p);
+    });
+    _player.onPlayerComplete.listen((_) {
+      if (mounted) {
+        setState(() {
+          _state = PlayerState.stopped;
+          _position = Duration.zero;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  Future<void> _togglePlay() async {
+    if (_state == PlayerState.playing) {
+      await _player.pause();
+    } else {
+      await _player.play(UrlSource(widget.audioUrl));
+    }
+  }
+
+  String _formatDuration(Duration d) {
+    final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$m:$s';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isPlaying = _state == PlayerState.playing;
+    final provider = Provider.of<AppProvider>(context);
+
+    final maxMs = _duration.inMilliseconds > 0 ? _duration.inMilliseconds.toDouble() : 10000.0;
+    final posMs = _position.inMilliseconds.toDouble().clamp(0.0, maxMs);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.accentCyan.withValues(alpha: 0.1),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              IconButton(
+                iconSize: 44,
+                color: AppTheme.accentCyan,
+                icon: Icon(
+                  isPlaying
+                      ? Icons.pause_circle_filled_rounded
+                      : Icons.play_circle_fill_rounded,
+                ),
+                onPressed: widget.audioUrl.isNotEmpty ? _togglePlay : null,
+                tooltip: isPlaying
+                    ? provider.tr('media_pause')
+                    : provider.tr('media_play'),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      provider.tr('media_audio_rec'),
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${_formatDuration(_position)} / ${_formatDuration(_duration)}',
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: AppTheme.darkTextMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              trackHeight: 3,
+              thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 6),
+              overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+              activeTrackColor: AppTheme.accentCyan,
+              thumbColor: AppTheme.accentCyan,
+            ),
+            child: Slider(
+              min: 0,
+              max: maxMs,
+              value: posMs,
+              onChanged: (val) {
+                _player.seek(Duration(milliseconds: val.toInt()));
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+

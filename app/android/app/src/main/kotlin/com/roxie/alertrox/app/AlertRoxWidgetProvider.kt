@@ -63,12 +63,8 @@ class AlertRoxWidgetProvider : HomeWidgetProvider() {
                         else -> false
                     }
 
-                    // Status indicator color
-                    val statusColor = if (isOnline) {
-                        if (widgetGlass) accentColor else 0xFF10B981.toInt()
-                    } else {
-                        0xFFEF4444.toInt()
-                    }
+                    // Status indicator color (her zaman çevrimiçi: yeşil, çevrimdışı: kırmızı)
+                    val statusColor = if (isOnline) 0xFF10B981.toInt() else 0xFFEF4444.toInt()
                     setTextColor(R.id.widget_status, statusColor)
 
                     // Text colors based on mode

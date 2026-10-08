@@ -7,9 +7,7 @@ import '../services/widget_service.dart';
 import '../constants/theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/volume_control_sheet.dart';
-import '../widgets/clipboard_sync_sheet.dart';
 import 'apps_manager_screen.dart';
-import '../services/wol_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -72,48 +70,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       return;
     }
 
-    if (commandType == 'clipboard') {
-      await ClipboardSyncSheet.show(context, targetId, provider);
-      return;
-    }
-
     if (commandType == 'apps') {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const AppsManagerScreen()),
       );
       return;
-    }
-
-    if (commandType == 'wake_pc') {
-      await _handleWakeOnLan(device, provider);
-      return;
-    }
-
-    if (requireConfirmation) {
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: Text(provider.tr('dialog_confirm_title')),
-          content: Text(provider.tr('dialog_logout_msg')),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: Text(provider.tr('btn_cancel')),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.statusOffline,
-                foregroundColor: Colors.white,
-              ),
-              onPressed: () => Navigator.pop(ctx, true),
-              child: Text(provider.tr('btn_confirm')),
-            ),
-          ],
-        ),
-      );
-
-      if (confirmed != true) return;
     }
 
     setState(() => _isActionLoading = true);
@@ -142,49 +104,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         setState(() => _isActionLoading = false);
         _loadLogs();
       }
-    }
-  }
-
-  Future<void> _handleWakeOnLan(Map<String, dynamic> device, AppProvider provider) async {
-    final mac = WakeOnLanService.extractMacAddress(device);
-    if (mac == null || mac.isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(provider.tr('wol_no_mac')),
-            backgroundColor: AppTheme.statusOffline,
-          ),
-        );
-      }
-      return;
-    }
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(provider.tr('wol_confirm_title')),
-        content: Text(provider.tr('wol_confirm_msg')),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(provider.tr('btn_cancel'))),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryTeal, foregroundColor: Colors.black),
-            onPressed: () => Navigator.pop(ctx, true),
-            child: Text(provider.tr('btn_confirm')),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed != true) return;
-
-    final success = await WakeOnLanService.wakeDevice(macAddress: mac);
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success ? provider.tr('wol_sent_success') : provider.tr('cmd_failed')),
-          backgroundColor: success ? AppTheme.statusOnline : AppTheme.statusOffline,
-        ),
-      );
     }
   }
 
@@ -939,24 +858,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         'danger': false,
       },
       {
-        'id': 'clipboard',
-        'icon': Icons.content_paste_rounded,
-        'label': provider.tr('act_clipboard'),
-        'color': const Color(0xFF6366F1),
-        'danger': false,
-      },
-      {
         'id': 'apps',
         'icon': Icons.apps_rounded,
         'label': provider.tr('act_apps'),
         'color': const Color(0xFF0284C7),
-        'danger': false,
-      },
-      {
-        'id': 'wake_pc',
-        'icon': Icons.settings_power_rounded,
-        'label': provider.tr('act_wake_pc'),
-        'color': const Color(0xFF10B981),
         'danger': false,
       },
     ];
