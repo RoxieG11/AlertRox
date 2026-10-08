@@ -23,7 +23,6 @@ LANGUAGES = ['tr', 'en', 'de', 'ru', 'es', 'ar', 'fr', 'pt', 'zh', 'ja']
 ANNOTATIONS = {
     'dashboard': {
         'status': {
-            'tr': 'Canlı PC Durumu (Çevrimiçi / Pil / IP)',
             'en': 'Live PC Status (Online / Battery / IP)',
             'de': 'Live PC-Status (Online / Akku / IP)',
             'ru': 'Статус ПК (В сети / Батарея / IP)',
@@ -35,7 +34,6 @@ ANNOTATIONS = {
             'ja': 'リアルタイムPC状態（オンライン / バッテリー / IP）',
         },
         'actions': {
-            'tr': 'Hızlı Eylem Kartları (Kilit, Kapatma vb.)',
             'en': 'Quick Action Controls (Lock, Shutdown etc.)',
             'de': 'Schnellaktionen (Sperren, Herunterfahren etc.)',
             'ru': 'Быстрые действия (Блокировка, Выключение и др.)',
@@ -49,7 +47,6 @@ ANNOTATIONS = {
     },
     'apps': {
         'tabs': {
-            'tr': 'Açık Olanlar ve Yüklü Uygulamalar',
             'en': 'Running & Installed Desktop Apps',
             'de': 'Laufende & Installierte Anwendungen',
             'ru': 'Запущенные и установленные приложения',
@@ -61,7 +58,6 @@ ANNOTATIONS = {
             'ja': '実行中およびインストール済みアプリ',
         },
         'launch': {
-            'tr': "Tek Dokunuşla PC'de Başlat / Kapat",
             'en': 'One-Click Launch & Close on PC',
             'de': 'Ein-Klick Starten & Beenden auf dem PC',
             'ru': 'Запуск и закрытие на ПК в один клик',
@@ -75,7 +71,6 @@ ANNOTATIONS = {
     },
     'media': {
         'audio': {
-            'tr': 'Uygulama İçi Ses Çalar (İndirmeden Dinle)',
             'en': 'In-App Audio Player (Listen without download)',
             'de': 'In-App Audio-Player (Ohne Download anhören)',
             'ru': 'Встроенный аудиоплеер (Без скачивания)',
@@ -87,7 +82,6 @@ ANNOTATIONS = {
             'ja': 'アプリ内オーディオプレーヤー（ダウンロード不要）',
         },
         'preview': {
-            'tr': 'Ekran Görüntüsü / Kamera Önizlemesi & İndirme',
             'en': 'Screenshot & Webcam Preview / Download',
             'de': 'Screenshot- & Webcam-Vorschau / Download',
             'ru': 'Просмотр и скачивание скриншота/веб-камеры',
@@ -101,33 +95,19 @@ ANNOTATIONS = {
     },
     'volume': {
         'slider': {
-            'tr': 'Anlık PC Ses Seviyesi Kaydırıcısı',
-            'en': 'Realtime PC Volume Slider',
-            'de': 'Echtzeit-PC-Lautstärkeregler',
-            'ru': 'Ползунок громкости ПК в реальном времени',
-            'es': 'Control deslizante de volumen de PC en tiempo real',
-            'ar': 'شريط تمرير مستوى صوت الكمبيوتر المباشر',
-            'fr': 'Curseur de volume PC en temps réel',
-            'pt': 'Controle deslizante de volume do PC em tempo real',
-            'zh': '实时电脑音量滑块',
-            'ja': 'リアルタイムPC音量スライダー',
-        },
-        'media': {
-            'tr': 'Medya Oynatıcı Kontrolleri (Önceki / Durdur / Sonraki)',
-            'en': 'Media Controls (Prev / Pause / Next)',
-            'de': 'Mediensteuerung (Zurück / Pause / Vor)',
-            'ru': 'Управление медиа (Пред / Пауза / След)',
-            'es': 'Controles de medios (Anterior / Pausa / Siguiente)',
-            'ar': 'التحكم في الوسائط (السابق / إيقاف / التالي)',
-            'fr': 'Contrôles multimédias (Précédent / Pause / Suivant)',
-            'pt': 'Controles de mídia (Anterior / Pausar / Próximo)',
-            'zh': '媒体播放控制（上一曲 / 暂停 / 下一曲）',
-            'ja': 'メディア操作（前へ / 一時停止 / 次へ）',
+            'en': 'Realtime PC Volume & Media Controls',
+            'de': 'Echtzeit-PC-Lautstärke & Mediensteuerung',
+            'ru': 'Громкость ПК и управление медиа в реальном времени',
+            'es': 'Volumen de PC y controles de medios en tiempo real',
+            'ar': 'التحكم في صوت الكمبيوتر والوسائط المباشرة',
+            'fr': 'Volume PC et contrôles multimédias en temps réel',
+            'pt': 'Volume do PC e controles de mídia em tempo real',
+            'zh': '实时电脑音量与媒体控制',
+            'ja': 'リアルタイムPC音量＆メディアコントロール',
         },
     },
     'widget': {
         'widget': {
-            'tr': "Canlı Android Masaüstü Widget'ı (Çevrimiçi Takibi)",
             'en': 'Live Android Home Screen Widget (PC Status)',
             'de': 'Live Android Startbildschirm-Widget (PC-Status)',
             'ru': 'Виджет главного экрана Android (Статус ПК)',
@@ -141,7 +121,6 @@ ANNOTATIONS = {
     },
     'supabase': {
         'step1': {
-            'tr': '1. "supabase_schema.sql" dosyasını buraya yapıştırın',
             'en': '1. Paste "supabase_schema.sql" code here',
             'de': '1. Fügen Sie "supabase_schema.sql" hier ein',
             'ru': '1. Вставьте код "supabase_schema.sql" сюда',
@@ -153,7 +132,6 @@ ANNOTATIONS = {
             'ja': '1. ここに "supabase_schema.sql" コードを貼り付けます',
         },
         'step2': {
-            'tr': '2. "Run" (Çalıştır) butonuna tıklayın',
             'en': '2. Click "Run" to execute',
             'de': '2. Auf "Run" (Ausführen) klicken',
             'ru': '2. Нажмите "Run" для выполнения',
@@ -217,6 +195,9 @@ def process_dashboard(lang):
     # Censor IP: (75, 260, 175, 285)
     censor_region(im, (75, 260, 175, 285), blur_radius=8)
     
+    if lang == 'tr':
+        return im  # Turkish: Pure clean screenshot with censorship only!
+    
     draw = ImageDraw.Draw(im)
     font = get_font(12, lang)
     
@@ -237,6 +218,9 @@ def process_apps(lang):
     # Censor local user path in Albion: (100, 592, 280, 615)
     censor_region(im, (100, 592, 280, 615), blur_radius=6)
     
+    if lang == 'tr':
+        return im  # Turkish: Pure clean screenshot with censorship only!
+    
     draw = ImageDraw.Draw(im)
     font = get_font(12, lang)
     
@@ -255,6 +239,10 @@ def process_apps(lang):
 
 def process_media(lang):
     im = Image.open(RAW_FILES['media']).convert('RGBA')
+    
+    if lang == 'tr':
+        return im  # Turkish: Pure clean screenshot!
+    
     draw = ImageDraw.Draw(im)
     font = get_font(12, lang)
     
@@ -272,23 +260,30 @@ def process_media(lang):
 
 def process_volume(lang):
     im = Image.open(RAW_FILES['volume']).convert('RGBA')
+    
+    if lang == 'tr':
+        return im  # Turkish: Pure clean screenshot with NO rectangles!
+    
+    # For other languages: NO broken rectangles on slider or buttons!
+    # Just a clean frame around the bottom sheet and a single header badge above the sheet.
     draw = ImageDraw.Draw(im)
     font = get_font(12, lang)
     
-    # Slider Callout
-    txt_slider = ANNOTATIONS['volume']['slider'][lang]
-    draw.rounded_rectangle([20, 790, 430, 850], radius=12, outline=(0, 240, 255, 220), width=2)
-    draw_pill_badge(draw, 30, 765, txt_slider, font, border_color=(0, 240, 255), dot_color=(0, 240, 255))
+    # Clean frame around the bottom sheet (2, 668, 446, 1022)
+    draw.rounded_rectangle([2, 668, 446, 1022], radius=28, outline=(0, 240, 255, 220), width=3)
     
-    # Media controls Callout
-    txt_media = ANNOTATIONS['volume']['media'][lang]
-    draw.rounded_rectangle([60, 870, 390, 970], radius=16, outline=(168, 85, 247, 220), width=2)
-    draw_pill_badge(draw, 30, 855, txt_media, font, border_color=(168, 85, 247), dot_color=(168, 85, 247))
+    # Badge placed neatly above the sheet at (30, 636)
+    txt_vol = ANNOTATIONS['volume']['slider'][lang]
+    draw_pill_badge(draw, 25, 636, txt_vol, font, border_color=(0, 240, 255), dot_color=(0, 240, 255))
     
     return im
 
 def process_widget(lang):
     im = Image.open(RAW_FILES['widget']).convert('RGBA')
+    
+    if lang == 'tr':
+        return im  # Turkish: Pure clean screenshot!
+    
     draw = ImageDraw.Draw(im)
     font = get_font(12, lang)
     
@@ -305,6 +300,9 @@ def process_supabase(lang):
     censor_region(im, (55, 10, 140, 33), blur_radius=8, fill_color=(15, 23, 42))
     # Censor avatar top right: (990, 8, 1015, 33)
     censor_region(im, (990, 8, 1015, 33), blur_radius=8, fill_color=(15, 23, 42))
+    
+    if lang == 'tr':
+        return im  # Turkish: Clean screenshot with censorship only!
     
     draw = ImageDraw.Draw(im)
     font = get_font(13, lang)
@@ -325,7 +323,7 @@ def process_supabase(lang):
     return im
 
 def main():
-    print("🎨 Generating clean, censored & annotated screenshots across all 10 languages...")
+    print("🎨 Generating updated screenshots across all 10 languages...")
     
     for lang in LANGUAGES:
         out_dir = os.path.join(OUT_BASE, lang)
@@ -355,9 +353,10 @@ def main():
         im_supa = process_supabase(lang)
         im_supa.convert('RGB').save(os.path.join(out_dir, 'supabase.png'), optimize=True)
         
-        print(f"  ✓ [{lang}] Generated 6 screenshots in {out_dir}/")
+        mode = "CLEAN (no overlays)" if lang == 'tr' else "ANNOTATED"
+        print(f"  ✓ [{lang}] Generated 6 screenshots in {out_dir}/ ({mode})")
         
-    print("🎉 All 60 screenshots generated successfully!")
+    print("🎉 All 60 screenshots regenerated successfully!")
 
 if __name__ == '__main__':
     main()
