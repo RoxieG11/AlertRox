@@ -60,6 +60,23 @@
 
 ---
 
+## 📸 Screenshots & Visual Showcase / Ekran Görüntüleri
+
+<div align="center">
+
+| 🖥️ Dashboard / Panel | 📦 Apps / Uygulamalar | 🖼️ Media & Player / Medya |
+|:---:|:---:|:---:|
+| <img src="assets/screenshots/tr/dashboard.png" width="230" alt="Dashboard" /> | <img src="assets/screenshots/tr/apps.png" width="230" alt="Apps Manager" /> | <img src="assets/screenshots/tr/media.png" width="230" alt="Media Gallery" /> |
+
+| 🔊 Volume / Ses & Medya | ⚡ Android Widget | 🛠️ Supabase SQL Setup |
+|:---:|:---:|:---:|
+| <img src="assets/screenshots/tr/volume.png" width="230" alt="Volume Control" /> | <img src="assets/screenshots/tr/widget.png" width="230" alt="Android Widget" /> | <img src="assets/screenshots/tr/supabase.png" width="380" alt="Supabase Setup" /> |
+
+</div>
+
+
+---
+
 ## 🏗️ Architecture / Sistem Mimarisi
 
 ```text
@@ -114,6 +131,10 @@ journalctl --user -u alertrox.service -f
 ### 1️⃣ Supabase Kurulumu
 1. Ücretsiz bir [Supabase](https://supabase.com) projesi açın.
 2. [`supabase_schema.sql`](supabase_schema.sql) ve ardından [`supabase_v15_features_migration.sql`](supabase_v15_features_migration.sql) dosyalarını Supabase paneli → **SQL Editor** alanına yapıştırıp **Run** butonuna basın.
+
+<div align="center">
+  <img src="assets/screenshots/tr/supabase.png" width="90%" alt="Supabase SQL Setup" />
+</div>
 
 ### 2️⃣ PC Ajanının Kurulumu (Bilgisayarınızda)
 ```bash

@@ -25,10 +25,31 @@ AlertRox 是一套开源的电脑安全监控系统，让您可以通过手机�
 
 ---
 
+
+---
+
+## 📸 应用截图与图文指南
+
+<div align="center">
+
+| 🖥️ Dashboard | 📦 Apps | 🖼️ Media |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/zh/dashboard.png" width="230" alt="Dashboard" /> | <img src="../assets/screenshots/zh/apps.png" width="230" alt="Apps" /> | <img src="../assets/screenshots/zh/media.png" width="230" alt="Media" /> |
+
+| 🔊 Volume | ⚡ Widget | 🛠️ Supabase SQL |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/zh/volume.png" width="230" alt="Volume" /> | <img src="../assets/screenshots/zh/widget.png" width="230" alt="Widget" /> | <img src="../assets/screenshots/zh/supabase.png" width="380" alt="Supabase Setup" /> |
+
+</div>
+
 ## 🛠️ 安装与部署指南
 
 ### 1. Supabase 数据库配置
 在 Supabase SQL 编辑器中粘贴并运行 `supabase_schema.sql`。
+
+<div align="center">
+  <img src="../assets/screenshots/zh/supabase.png" width="85%" alt="Supabase Setup" />
+</div>
 
 ### 2. 电脑端后台服务安装 (Linux)
 ```bash

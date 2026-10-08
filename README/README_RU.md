@@ -25,10 +25,31 @@ AlertRox — это система с открытым исходным кодо
 
 ---
 
+
+---
+
+## 📸 Скриншоты и визуальное руководство
+
+<div align="center">
+
+| 🖥️ Dashboard | 📦 Apps | 🖼️ Media |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/ru/dashboard.png" width="230" alt="Dashboard" /> | <img src="../assets/screenshots/ru/apps.png" width="230" alt="Apps" /> | <img src="../assets/screenshots/ru/media.png" width="230" alt="Media" /> |
+
+| 🔊 Volume | ⚡ Widget | 🛠️ Supabase SQL |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/ru/volume.png" width="230" alt="Volume" /> | <img src="../assets/screenshots/ru/widget.png" width="230" alt="Widget" /> | <img src="../assets/screenshots/ru/supabase.png" width="380" alt="Supabase Setup" /> |
+
+</div>
+
 ## 🛠️ Руководство по установке
 
 ### 1. База данных Supabase
 Вставьте и выполните `supabase_schema.sql` в редакторе SQL Supabase.
+
+<div align="center">
+  <img src="../assets/screenshots/ru/supabase.png" width="85%" alt="Supabase Setup" />
+</div>
 
 ### 2. Настройка агента ПК (Linux)
 ```bash

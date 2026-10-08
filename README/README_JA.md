@@ -25,10 +25,31 @@ AlertRoxは、スマートフォンからPCを完全に遠隔監視・操作で�
 
 ---
 
+
+---
+
+## 📸 スクリーンショット＆ビジュアルガイド
+
+<div align="center">
+
+| 🖥️ Dashboard | 📦 Apps | 🖼️ Media |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/ja/dashboard.png" width="230" alt="Dashboard" /> | <img src="../assets/screenshots/ja/apps.png" width="230" alt="Apps" /> | <img src="../assets/screenshots/ja/media.png" width="230" alt="Media" /> |
+
+| 🔊 Volume | ⚡ Widget | 🛠️ Supabase SQL |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/ja/volume.png" width="230" alt="Volume" /> | <img src="../assets/screenshots/ja/widget.png" width="230" alt="Widget" /> | <img src="../assets/screenshots/ja/supabase.png" width="380" alt="Supabase Setup" /> |
+
+</div>
+
 ## 🛠️ セットアップガイド
 
 ### 1. Supabaseデータベース設定
 Supabase SQLエディタで `supabase_schema.sql` を実行します。
+
+<div align="center">
+  <img src="../assets/screenshots/ja/supabase.png" width="85%" alt="Supabase Setup" />
+</div>
 
 ### 2. PCエージェントのセットアップ (Linux)
 ```bash

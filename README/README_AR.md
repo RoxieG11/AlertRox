@@ -25,10 +25,31 @@
 
 ---
 
+
+---
+
+## 📸 لقطات الشاشة والدليل المرئي
+
+<div align="center">
+
+| 🖥️ Dashboard | 📦 Apps | 🖼️ Media |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/ar/dashboard.png" width="230" alt="Dashboard" /> | <img src="../assets/screenshots/ar/apps.png" width="230" alt="Apps" /> | <img src="../assets/screenshots/ar/media.png" width="230" alt="Media" /> |
+
+| 🔊 Volume | ⚡ Widget | 🛠️ Supabase SQL |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/ar/volume.png" width="230" alt="Volume" /> | <img src="../assets/screenshots/ar/widget.png" width="230" alt="Widget" /> | <img src="../assets/screenshots/ar/supabase.png" width="380" alt="Supabase Setup" /> |
+
+</div>
+
 ## 🛠️ دليل التثبيت
 
 ### 1. قاعدة بيانات Supabase
 قم بتشغيل كود `supabase_schema.sql` داخل محرر SQL في Supabase.
+
+<div align="center">
+  <img src="../assets/screenshots/ar/supabase.png" width="85%" alt="Supabase Setup" />
+</div>
 
 ### 2. إعداد عميل الكمبيوتر (Linux)
 ```bash

@@ -25,10 +25,31 @@ AlertRox é um sistema open-source para monitorar e controlar seu computador rem
 
 ---
 
+
+---
+
+## 📸 Capturas de tela e guia visual
+
+<div align="center">
+
+| 🖥️ Dashboard | 📦 Apps | 🖼️ Media |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/pt/dashboard.png" width="230" alt="Dashboard" /> | <img src="../assets/screenshots/pt/apps.png" width="230" alt="Apps" /> | <img src="../assets/screenshots/pt/media.png" width="230" alt="Media" /> |
+
+| 🔊 Volume | ⚡ Widget | 🛠️ Supabase SQL |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/pt/volume.png" width="230" alt="Volume" /> | <img src="../assets/screenshots/pt/widget.png" width="230" alt="Widget" /> | <img src="../assets/screenshots/pt/supabase.png" width="380" alt="Supabase Setup" /> |
+
+</div>
+
 ## 🛠️ Guia de Instalação
 
 ### 1. Banco de Dados Supabase
 Execute o script `supabase_schema.sql` no SQL Editor do Supabase.
+
+<div align="center">
+  <img src="../assets/screenshots/pt/supabase.png" width="85%" alt="Supabase Setup" />
+</div>
 
 ### 2. Configurar Agente PC (Linux)
 ```bash

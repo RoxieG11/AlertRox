@@ -29,10 +29,31 @@ AlertRox is an open-source security system that allows you to fully monitor and 
 
 ---
 
+
+---
+
+## 📸 Screenshots & Visual Walkthrough
+
+<div align="center">
+
+| 🖥️ Dashboard | 📦 Apps | 🖼️ Media |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/en/dashboard.png" width="230" alt="Dashboard" /> | <img src="../assets/screenshots/en/apps.png" width="230" alt="Apps" /> | <img src="../assets/screenshots/en/media.png" width="230" alt="Media" /> |
+
+| 🔊 Volume | ⚡ Widget | 🛠️ Supabase SQL |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/en/volume.png" width="230" alt="Volume" /> | <img src="../assets/screenshots/en/widget.png" width="230" alt="Widget" /> | <img src="../assets/screenshots/en/supabase.png" width="380" alt="Supabase Setup" /> |
+
+</div>
+
 ## 🛠️ Installation & Setup
 
 ### 1. Supabase Database
 Paste and run the contents of `supabase_schema.sql` in your Supabase SQL Editor.
+
+<div align="center">
+  <img src="../assets/screenshots/en/supabase.png" width="85%" alt="Supabase Setup" />
+</div>
 
 ### 2. PC Agent Setup (Linux)
 ```bash

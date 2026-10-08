@@ -25,10 +25,31 @@ AlertRox ist ein Open-Source-Sicherheitssystem zur vollständigen Fernsteuerung 
 
 ---
 
+
+---
+
+## 📸 Screenshots & Visuelle Anleitung
+
+<div align="center">
+
+| 🖥️ Dashboard | 📦 Apps | 🖼️ Media |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/de/dashboard.png" width="230" alt="Dashboard" /> | <img src="../assets/screenshots/de/apps.png" width="230" alt="Apps" /> | <img src="../assets/screenshots/de/media.png" width="230" alt="Media" /> |
+
+| 🔊 Volume | ⚡ Widget | 🛠️ Supabase SQL |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/de/volume.png" width="230" alt="Volume" /> | <img src="../assets/screenshots/de/widget.png" width="230" alt="Widget" /> | <img src="../assets/screenshots/de/supabase.png" width="380" alt="Supabase Setup" /> |
+
+</div>
+
 ## 🛠️ Installationsanleitung
 
 ### 1. Supabase-Datenbank
 Führen Sie `supabase_schema.sql` im Supabase SQL-Editor aus.
+
+<div align="center">
+  <img src="../assets/screenshots/de/supabase.png" width="85%" alt="Supabase Setup" />
+</div>
 
 ### 2. PC-Agent einrichten (Linux)
 ```bash

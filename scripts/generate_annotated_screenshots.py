@@ -1,0 +1,363 @@
+#!/usr/bin/env python3
+"""
+AlertRox — Otomatik Ekran Görüntüsü Düzenleyici, Sansürleyici ve Çok Dilli Görsel Üretici
+"""
+
+import os
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
+
+RAW_DIR = "/home/roxie/.gemini/antigravity/brain/cd52aedc-4d61-443b-b52d-2febdb1b9cff/.user_uploaded"
+OUT_BASE = "assets/screenshots"
+
+RAW_FILES = {
+    'dashboard': os.path.join(RAW_DIR, 'media_1791430183458.jpg'),
+    'apps': os.path.join(RAW_DIR, 'media_1791430183465.jpg'),
+    'media': os.path.join(RAW_DIR, 'media_1791430183472.jpg'),
+    'volume': os.path.join(RAW_DIR, 'media_1791430183489.jpg'),
+    'widget': os.path.join(RAW_DIR, 'media_1791430183494.jpg'),
+    'supabase': os.path.join(RAW_DIR, 'media_1791430375931.png'),
+}
+
+LANGUAGES = ['tr', 'en', 'de', 'ru', 'es', 'ar', 'fr', 'pt', 'zh', 'ja']
+
+ANNOTATIONS = {
+    'dashboard': {
+        'status': {
+            'tr': 'Canlı PC Durumu (Çevrimiçi / Pil / IP)',
+            'en': 'Live PC Status (Online / Battery / IP)',
+            'de': 'Live PC-Status (Online / Akku / IP)',
+            'ru': 'Статус ПК (В сети / Батарея / IP)',
+            'es': 'Estado de la PC (En línea / Batería / IP)',
+            'ar': 'حالة الكمبيوتر المباشرة (متصل / البطارية)',
+            'fr': 'Statut du PC en direct (En ligne / Batterie / IP)',
+            'pt': 'Status do PC em tempo real (Online / Bateria / IP)',
+            'zh': '实时电脑状态（在线 / 电量 / IP）',
+            'ja': 'リアルタイムPC状態（オンライン / バッテリー / IP）',
+        },
+        'actions': {
+            'tr': 'Hızlı Eylem Kartları (Kilit, Kapatma vb.)',
+            'en': 'Quick Action Controls (Lock, Shutdown etc.)',
+            'de': 'Schnellaktionen (Sperren, Herunterfahren etc.)',
+            'ru': 'Быстрые действия (Блокировка, Выключение и др.)',
+            'es': 'Controles rápidos (Bloquear, Apagar, etc.)',
+            'ar': 'إجراءات سريعة (قفل، إيقاف التشغيل إلخ)',
+            'fr': 'Contrôles rapides (Verrouiller, Éteindre etc.)',
+            'pt': 'Controles rápidos (Bloquear, Desligar etc.)',
+            'zh': '快捷操作（锁定、关机等）',
+            'ja': 'クイック操作（ロック、シャットダウン等）',
+        },
+    },
+    'apps': {
+        'tabs': {
+            'tr': 'Açık Olanlar ve Yüklü Uygulamalar',
+            'en': 'Running & Installed Desktop Apps',
+            'de': 'Laufende & Installierte Anwendungen',
+            'ru': 'Запущенные и установленные приложения',
+            'es': 'Aplicaciones abiertas e instaladas',
+            'ar': 'التطبيقات المشغلة والمثبتة',
+            'fr': 'Applications en cours et installées',
+            'pt': 'Aplicativos em execução e instalados',
+            'zh': '运行中与已安装的应用',
+            'ja': '実行中およびインストール済みアプリ',
+        },
+        'launch': {
+            'tr': "Tek Dokunuşla PC'de Başlat / Kapat",
+            'en': 'One-Click Launch & Close on PC',
+            'de': 'Ein-Klick Starten & Beenden auf dem PC',
+            'ru': 'Запуск и закрытие на ПК в один клик',
+            'es': 'Iniciar y cerrar en la PC con un toque',
+            'ar': 'تشغيل وإغلاق بنقرة واحدة على الكمبيوتر',
+            'fr': 'Lancer et fermer sur PC en un clic',
+            'pt': 'Iniciar e fechar no PC com um toque',
+            'zh': '一键在电脑上启动或关闭',
+            'ja': 'PC上でワンクリック起動 / 終了',
+        },
+    },
+    'media': {
+        'audio': {
+            'tr': 'Uygulama İçi Ses Çalar (İndirmeden Dinle)',
+            'en': 'In-App Audio Player (Listen without download)',
+            'de': 'In-App Audio-Player (Ohne Download anhören)',
+            'ru': 'Встроенный аудиоплеер (Без скачивания)',
+            'es': 'Reproductor de audio (Escucha sin descargar)',
+            'ar': 'مشغل صوت مدمج (استماع بدون تنزيل)',
+            'fr': 'Lecteur audio intégré (Écouter sans télécharger)',
+            'pt': 'Player de áudio no app (Ouvir sem baixar)',
+            'zh': '应用内音频播放器（无需下载直接收听）',
+            'ja': 'アプリ内オーディオプレーヤー（ダウンロード不要）',
+        },
+        'preview': {
+            'tr': 'Ekran Görüntüsü / Kamera Önizlemesi & İndirme',
+            'en': 'Screenshot & Webcam Preview / Download',
+            'de': 'Screenshot- & Webcam-Vorschau / Download',
+            'ru': 'Просмотр и скачивание скриншота/веб-камеры',
+            'es': 'Vista previa y descarga de capturas y cámara',
+            'ar': 'معاينة وتنزيل لقطة الشاشة والكاميرا',
+            'fr': 'Aperçu et téléchargement de la capture et webcam',
+            'pt': 'Prévia e download de captura de tela e webcam',
+            'zh': '屏幕截图与摄像头预览及下载',
+            'ja': 'スクリーンショット＆Webカメラプレビュー/保存',
+        },
+    },
+    'volume': {
+        'slider': {
+            'tr': 'Anlık PC Ses Seviyesi Kaydırıcısı',
+            'en': 'Realtime PC Volume Slider',
+            'de': 'Echtzeit-PC-Lautstärkeregler',
+            'ru': 'Ползунок громкости ПК в реальном времени',
+            'es': 'Control deslizante de volumen de PC en tiempo real',
+            'ar': 'شريط تمرير مستوى صوت الكمبيوتر المباشر',
+            'fr': 'Curseur de volume PC en temps réel',
+            'pt': 'Controle deslizante de volume do PC em tempo real',
+            'zh': '实时电脑音量滑块',
+            'ja': 'リアルタイムPC音量スライダー',
+        },
+        'media': {
+            'tr': 'Medya Oynatıcı Kontrolleri (Önceki / Durdur / Sonraki)',
+            'en': 'Media Controls (Prev / Pause / Next)',
+            'de': 'Mediensteuerung (Zurück / Pause / Vor)',
+            'ru': 'Управление медиа (Пред / Пауза / След)',
+            'es': 'Controles de medios (Anterior / Pausa / Siguiente)',
+            'ar': 'التحكم في الوسائط (السابق / إيقاف / التالي)',
+            'fr': 'Contrôles multimédias (Précédent / Pause / Suivant)',
+            'pt': 'Controles de mídia (Anterior / Pausar / Próximo)',
+            'zh': '媒体播放控制（上一曲 / 暂停 / 下一曲）',
+            'ja': 'メディア操作（前へ / 一時停止 / 次へ）',
+        },
+    },
+    'widget': {
+        'widget': {
+            'tr': "Canlı Android Masaüstü Widget'ı (Çevrimiçi Takibi)",
+            'en': 'Live Android Home Screen Widget (PC Status)',
+            'de': 'Live Android Startbildschirm-Widget (PC-Status)',
+            'ru': 'Виджет главного экрана Android (Статус ПК)',
+            'es': 'Widget de pantalla de inicio de Android (Estado)',
+            'ar': 'ودجت الشاشة الرئيسية لنظام أندرويد (حالة الكمبيوتر)',
+            'fr': "Widget d'écran d'accueil Android (Statut PC)",
+            'pt': 'Widget de tela inicial do Android (Status do PC)',
+            'zh': '安卓桌面实时小组件（实时状态）',
+            'ja': 'Androidホーム画面リアルタイムウィジェット',
+        },
+    },
+    'supabase': {
+        'step1': {
+            'tr': '1. "supabase_schema.sql" dosyasını buraya yapıştırın',
+            'en': '1. Paste "supabase_schema.sql" code here',
+            'de': '1. Fügen Sie "supabase_schema.sql" hier ein',
+            'ru': '1. Вставьте код "supabase_schema.sql" сюда',
+            'es': '1. Pega el código de "supabase_schema.sql" aquí',
+            'ar': '1. الصق كود "supabase_schema.sql" هنا',
+            'fr': '1. Collez le code "supabase_schema.sql" ici',
+            'pt': '1. Cole o código "supabase_schema.sql" aqui',
+            'zh': '1. 将 "supabase_schema.sql" 代码粘贴在此处',
+            'ja': '1. ここに "supabase_schema.sql" コードを貼り付けます',
+        },
+        'step2': {
+            'tr': '2. "Run" (Çalıştır) butonuna tıklayın',
+            'en': '2. Click "Run" to execute',
+            'de': '2. Auf "Run" (Ausführen) klicken',
+            'ru': '2. Нажмите "Run" для выполнения',
+            'es': '2. Haz clic en "Run" para ejecutar',
+            'ar': '2. انقر فوق "Run" للتشغيل',
+            'fr': '2. Cliquez sur "Run" pour exécuter',
+            'pt': '2. Clique em "Run" para executar',
+            'zh': '2. 点击 "Run" 执行',
+            'ja': '2. "Run"（実行）をクリックします',
+        },
+    },
+}
+
+def get_font(size, lang='en'):
+    if lang in ['zh', 'ja']:
+        font_path = '/usr/share/fonts/noto-cjk/NotoSansCJK-Bold.ttc'
+    elif lang == 'ar':
+        font_path = '/usr/share/fonts/noto/NotoSansArabic-Black.ttf'
+    else:
+        font_path = '/usr/share/fonts/noto/NotoSans-Regular.ttf'
+    try:
+        return ImageFont.truetype(font_path, size)
+    except Exception:
+        return ImageFont.load_default()
+
+def draw_pill_badge(draw, x, y, text, font, border_color=(0, 240, 255), bg_color=(15, 23, 42, 235), text_color=(255, 255, 255), pad_x=12, pad_y=5, dot_color=None):
+    bbox = draw.textbbox((0, 0), text, font=font)
+    tw = bbox[2] - bbox[0]
+    th = bbox[3] - bbox[1]
+    dot_space = 14 if dot_color else 0
+    w = tw + pad_x * 2 + dot_space
+    h = th + pad_y * 2
+    
+    # Draw rounded rect
+    draw.rounded_rectangle([x, y, x + w, y + h], radius=6, fill=bg_color, outline=border_color, width=2)
+    
+    # Optional indicator dot
+    if dot_color:
+        dot_r = 4
+        dot_cy = y + h // 2
+        dot_cx = x + pad_x + dot_r
+        draw.ellipse([dot_cx - dot_r, dot_cy - dot_r, dot_cx + dot_r, dot_cy + dot_r], fill=dot_color)
+    
+    draw.text((x + pad_x + dot_space, y + pad_y - bbox[1] + 1), text, fill=text_color, font=font)
+    return (x, y, w, h)
+
+def draw_callout_arrow(draw, start_pt, end_pt, color=(0, 240, 255), width=2):
+    draw.line([start_pt, end_pt], fill=color, width=width)
+    r = 3
+    draw.ellipse([end_pt[0] - r, end_pt[1] - r, end_pt[0] + r, end_pt[1] + r], fill=color)
+
+def censor_region(img, box, blur_radius=10, fill_color=(20, 20, 30)):
+    cropped = img.crop(box)
+    blurred = cropped.filter(ImageFilter.GaussianBlur(blur_radius))
+    img.paste(blurred, box)
+    draw = ImageDraw.Draw(img, 'RGBA')
+    draw.rounded_rectangle(box, radius=4, fill=(fill_color[0], fill_color[1], fill_color[2], 190))
+
+def process_dashboard(lang):
+    im = Image.open(RAW_FILES['dashboard']).convert('RGBA')
+    # Censor IP: (75, 260, 175, 285)
+    censor_region(im, (75, 260, 175, 285), blur_radius=8)
+    
+    draw = ImageDraw.Draw(im)
+    font = get_font(12, lang)
+    
+    # Status Card Callout
+    txt_status = ANNOTATIONS['dashboard']['status'][lang]
+    draw.rounded_rectangle([20, 130, 430, 305], radius=14, outline=(0, 240, 255, 220), width=2)
+    draw_pill_badge(draw, 30, 105, txt_status, font, border_color=(0, 240, 255), dot_color=(0, 240, 255))
+    
+    # Action Cards Callout
+    txt_actions = ANNOTATIONS['dashboard']['actions'][lang]
+    draw.rounded_rectangle([20, 365, 430, 895], radius=16, outline=(16, 185, 129, 220), width=2)
+    draw_pill_badge(draw, 30, 345, txt_actions, font, border_color=(16, 185, 129), dot_color=(16, 185, 129))
+    
+    return im
+
+def process_apps(lang):
+    im = Image.open(RAW_FILES['apps']).convert('RGBA')
+    # Censor local user path in Albion: (100, 592, 280, 615)
+    censor_region(im, (100, 592, 280, 615), blur_radius=6)
+    
+    draw = ImageDraw.Draw(im)
+    font = get_font(12, lang)
+    
+    # Tabs Callout
+    txt_tabs = ANNOTATIONS['apps']['tabs'][lang]
+    draw.rounded_rectangle([20, 115, 430, 170], radius=10, outline=(0, 240, 255, 220), width=2)
+    draw_pill_badge(draw, 30, 95, txt_tabs, font, border_color=(0, 240, 255), dot_color=(0, 240, 255))
+    
+    # Launch button Callout
+    txt_launch = ANNOTATIONS['apps']['launch'][lang]
+    draw.rounded_rectangle([285, 265, 400, 315], radius=12, outline=(16, 185, 129, 240), width=3)
+    draw_pill_badge(draw, 80, 235, txt_launch, font, border_color=(16, 185, 129), dot_color=(16, 185, 129))
+    draw_callout_arrow(draw, (295, 250), (340, 265), color=(16, 185, 129), width=2)
+    
+    return im
+
+def process_media(lang):
+    im = Image.open(RAW_FILES['media']).convert('RGBA')
+    draw = ImageDraw.Draw(im)
+    font = get_font(12, lang)
+    
+    # Audio Player
+    txt_audio = ANNOTATIONS['media']['audio'][lang]
+    draw.rounded_rectangle([20, 130, 430, 350], radius=16, outline=(0, 240, 255, 220), width=2)
+    draw_pill_badge(draw, 30, 110, txt_audio, font, border_color=(0, 240, 255), dot_color=(0, 240, 255))
+    
+    # Screenshot Card
+    txt_prev = ANNOTATIONS['media']['preview'][lang]
+    draw.rounded_rectangle([20, 370, 430, 735], radius=16, outline=(16, 185, 129, 220), width=2)
+    draw_pill_badge(draw, 30, 350, txt_prev, font, border_color=(16, 185, 129), dot_color=(16, 185, 129))
+    
+    return im
+
+def process_volume(lang):
+    im = Image.open(RAW_FILES['volume']).convert('RGBA')
+    draw = ImageDraw.Draw(im)
+    font = get_font(12, lang)
+    
+    # Slider Callout
+    txt_slider = ANNOTATIONS['volume']['slider'][lang]
+    draw.rounded_rectangle([20, 790, 430, 850], radius=12, outline=(0, 240, 255, 220), width=2)
+    draw_pill_badge(draw, 30, 765, txt_slider, font, border_color=(0, 240, 255), dot_color=(0, 240, 255))
+    
+    # Media controls Callout
+    txt_media = ANNOTATIONS['volume']['media'][lang]
+    draw.rounded_rectangle([60, 870, 390, 970], radius=16, outline=(168, 85, 247, 220), width=2)
+    draw_pill_badge(draw, 30, 855, txt_media, font, border_color=(168, 85, 247), dot_color=(168, 85, 247))
+    
+    return im
+
+def process_widget(lang):
+    im = Image.open(RAW_FILES['widget']).convert('RGBA')
+    draw = ImageDraw.Draw(im)
+    font = get_font(12, lang)
+    
+    # Widget Box
+    txt_widget = ANNOTATIONS['widget']['widget'][lang]
+    draw.rounded_rectangle([30, 95, 420, 310], radius=18, outline=(0, 240, 255, 240), width=3)
+    draw_pill_badge(draw, 35, 70, txt_widget, font, border_color=(0, 240, 255), dot_color=(0, 240, 255))
+    
+    return im
+
+def process_supabase(lang):
+    im = Image.open(RAW_FILES['supabase']).convert('RGBA')
+    # Censor breadcrumb 'Roxie FREE': (55, 10, 140, 33)
+    censor_region(im, (55, 10, 140, 33), blur_radius=8, fill_color=(15, 23, 42))
+    # Censor avatar top right: (990, 8, 1015, 33)
+    censor_region(im, (990, 8, 1015, 33), blur_radius=8, fill_color=(15, 23, 42))
+    
+    draw = ImageDraw.Draw(im)
+    font = get_font(13, lang)
+    
+    # Step 1: SQL Editor Query Area (170, 95, 700, 420)
+    txt_step1 = ANNOTATIONS['supabase']['step1'][lang]
+    draw.rounded_rectangle([170, 95, 700, 420], radius=10, outline=(0, 240, 255, 180), width=2)
+    draw_pill_badge(draw, 185, 110, txt_step1, font, border_color=(0, 240, 255), pad_x=12, pad_y=6, dot_color=(0, 240, 255))
+    
+    # Step 2: Run Button exact coordinates: (966, 55, 1008, 79)
+    txt_step2 = ANNOTATIONS['supabase']['step2'][lang]
+    draw.rounded_rectangle([964, 53, 1009, 81], radius=6, outline=(16, 185, 129, 255), width=3)
+    
+    # Place pill badge at left of Run button: x=640..700, y=52
+    draw_pill_badge(draw, 640, 52, txt_step2, font, border_color=(16, 185, 129), pad_x=12, pad_y=6, dot_color=(16, 185, 129))
+    draw_callout_arrow(draw, (935, 67), (960, 67), color=(16, 185, 129), width=2)
+    
+    return im
+
+def main():
+    print("🎨 Generating clean, censored & annotated screenshots across all 10 languages...")
+    
+    for lang in LANGUAGES:
+        out_dir = os.path.join(OUT_BASE, lang)
+        os.makedirs(out_dir, exist_ok=True)
+        
+        # 1. Dashboard
+        im_dash = process_dashboard(lang)
+        im_dash.convert('RGB').save(os.path.join(out_dir, 'dashboard.png'), optimize=True)
+        
+        # 2. Apps
+        im_apps = process_apps(lang)
+        im_apps.convert('RGB').save(os.path.join(out_dir, 'apps.png'), optimize=True)
+        
+        # 3. Media
+        im_media = process_media(lang)
+        im_media.convert('RGB').save(os.path.join(out_dir, 'media.png'), optimize=True)
+        
+        # 4. Volume
+        im_volume = process_volume(lang)
+        im_volume.convert('RGB').save(os.path.join(out_dir, 'volume.png'), optimize=True)
+        
+        # 5. Widget
+        im_widget = process_widget(lang)
+        im_widget.convert('RGB').save(os.path.join(out_dir, 'widget.png'), optimize=True)
+        
+        # 6. Supabase
+        im_supa = process_supabase(lang)
+        im_supa.convert('RGB').save(os.path.join(out_dir, 'supabase.png'), optimize=True)
+        
+        print(f"  ✓ [{lang}] Generated 6 screenshots in {out_dir}/")
+        
+    print("🎉 All 60 screenshots generated successfully!")
+
+if __name__ == '__main__':
+    main()

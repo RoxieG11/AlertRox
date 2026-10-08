@@ -29,10 +29,31 @@ AlertRox, evdeki veya ofisteki bilgisayarınızı cep telefonunuzdan tam kontrol
 
 ---
 
+
+---
+
+## 📸 Ekran Görüntüleri & Görsel Anlatım
+
+<div align="center">
+
+| 🖥️ Dashboard | 📦 Apps | 🖼️ Media |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/tr/dashboard.png" width="230" alt="Dashboard" /> | <img src="../assets/screenshots/tr/apps.png" width="230" alt="Apps" /> | <img src="../assets/screenshots/tr/media.png" width="230" alt="Media" /> |
+
+| 🔊 Volume | ⚡ Widget | 🛠️ Supabase SQL |
+|:---:|:---:|:---:|
+| <img src="../assets/screenshots/tr/volume.png" width="230" alt="Volume" /> | <img src="../assets/screenshots/tr/widget.png" width="230" alt="Widget" /> | <img src="../assets/screenshots/tr/supabase.png" width="380" alt="Supabase Setup" /> |
+
+</div>
+
 ## 🛠️ Kurulum ve Kullanım
 
 ### 1. Supabase Veritabanı
 Supabase projenizin SQL Editor kısmına gidip `supabase_schema.sql` dosyasının içeriğini yapıştırın ve çalıştırın.
+
+<div align="center">
+  <img src="../assets/screenshots/tr/supabase.png" width="85%" alt="Supabase Setup" />
+</div>
 
 ### 2. PC Gözcü Servisinin Kurulumu (Linux)
 ```bash
